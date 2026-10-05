@@ -259,6 +259,24 @@ export async function createGame({ canvas, uiRoot }) {
   // so the spawn still goes through the clearance search.
   const spawn = clearSpot(village.spawn?.x ?? SPAWN.x, village.spawn?.z ?? SPAWN.z);
 
+  /**
+   * Put the WHOLE party at (x, z) as a short trail, every member cleared against
+   * the colliders.
+   *
+   * Used by both a fresh start and a save restore, and it exists because a save
+   * records only the LEADER's position. Restoring the leader alone left the three
+   * followers at their boot positions by the village, and on the first overworld
+   * frame `party.follow` sent them walking across the island — hidden once they
+   * were further than MAX_DIST, so a resumed game appeared to have lost three of
+   * its four members and then slowly gathered them back.
+   */
+  function placeParty(x, z) {
+    party.members.forEach((m, i) => {
+      const s = clearSpot(x, z - i * 0.9);
+      m.setPosition(s.x, s.z);
+    });
+  }
+
   const allies = PARTY_IDS.map((id) => toCombatant(ACTORS[id], `a:${id}`, 'ally'));
   // The bag: gold and item counts. `ITEMS` is the catalogue (what exists),
   // this is what the party is actually carrying. Battle.js has implemented
@@ -905,10 +923,7 @@ export async function createGame({ canvas, uiRoot }) {
       a.boosted = false;
     }
     for (const m of markers) { m.used = false; m.visited = false; }
-    for (const m of party.members) {
-      const s = clearSpot(spawn.x, spawn.z - party.members.indexOf(m) * 0.9);
-      m.setPosition(s.x, s.z);
-    }
+    placeParty(spawn.x, spawn.z);
     focusX = spawn.x;
     focusZ = spawn.z;
     engine.setCameraTarget(spawn.x, terrain.heightAt(spawn.x, spawn.z) + 1.4, spawn.z);
@@ -949,10 +964,7 @@ export async function createGame({ canvas, uiRoot }) {
 
   // Party parked at the spawn before anything runs, so a screenshot taken before
   // the title resolves is of the village and not of the map origin.
-  party.members.forEach((m, i) => {
-    const s = clearSpot(spawn.x, spawn.z - i * 0.9);   // trail out of the clear cells
-    m.setPosition(s.x, s.z);
-  });
+  placeParty(spawn.x, spawn.z);
   syncActors();
   syncHud();
   engine.camera.fov = FOV_WORLD;
@@ -975,7 +987,10 @@ export async function createGame({ canvas, uiRoot }) {
     // pine, and the slide() rules would leave them wedged with no free heading.
     const at = save.positionFor(data);
     if (at && terrain.isWalkable(at.x, at.z)) {
-      party.leader.setPosition(at.x, at.z);
+      // The WHOLE party, not just the leader: the followers would otherwise walk
+      // in from the village on the first frame and the resumed game would look
+      // like it had lost them. See placeParty.
+      placeParty(at.x, at.z);
       followLeader();
       focusX = at.x;
       focusZ = at.z;

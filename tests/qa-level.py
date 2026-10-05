@@ -292,6 +292,19 @@ def main():
               f"{before_bag} -> {st['bag']}")
         check("no intro replay on resume", st["mode"] == "overworld", st["mode"])
 
+        # A save records only the LEADER's position. Restoring the leader alone
+        # left the other three at their boot spots by the village, and the first
+        # overworld frame sent them walking across the island — hidden past
+        # MAX_DIST, so a resumed game looked like it had lost three members.
+        page.wait_for_timeout(600)
+        spread = page.evaluate("""() => {
+          const H = window.__hd2d;
+          const lead = H.party.leader.position;
+          return H.party.members.map((m) => +Math.hypot(m.position.x - lead.x, m.position.z - lead.z).toFixed(2));
+        }""")
+        check("the whole party resumes together, not just the leader",
+              max(spread) <= 3.0, spread)
+
         # The reload must not RESET what has already been taken. Markers are
         # rebuilt fresh on every load, and the save used to carry no marker state,
         # so the wreck could be looted again on every Continue: 40 gold and three

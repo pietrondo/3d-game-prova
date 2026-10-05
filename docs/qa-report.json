@@ -32,24 +32,24 @@
   },
   "chunkinessByScale": {
     "1": {
-      "meanStep": 7.25,
-      "longestFlatRun": 104,
-      "distinct": 149
+      "meanStep": 7.26,
+      "longestFlatRun": 103,
+      "distinct": 152
     },
     "2": {
-      "meanStep": 7.1,
+      "meanStep": 7.09,
       "longestFlatRun": 105,
-      "distinct": 147
+      "distinct": 146
     },
     "3": {
-      "meanStep": 6.98,
+      "meanStep": 6.92,
       "longestFlatRun": 105,
       "distinct": 143
     },
     "4": {
-      "meanStep": 6.23,
+      "meanStep": 6.24,
       "longestFlatRun": 103,
-      "distinct": 135
+      "distinct": 134
     }
   },
   "partyOverlapPct": 16.1,
@@ -120,9 +120,9 @@
     "pct": 20.0
   },
   "walk": {
-    "real": 3.35,
-    "walked": 3.4,
-    "errorPct": 1.5
+    "real": 3.99,
+    "walked": 4,
+    "errorPct": 0.3
   },
   "battleState": {
     "mode": "battle",
@@ -134,12 +134,12 @@
     "pos": [
       30.08,
       0.37,
-      47.13
+      46.49
     ],
     "tile": "grass",
     "zone": "meadow",
     "propCount": 369,
-    "walked": 3.4,
+    "walked": 4,
     "asking": true,
     "draining": false,
     "queued": 0,
@@ -155,9 +155,9 @@
     "camera": [
       30.08,
       17.2,
-      66.36
+      65.72
     ],
-    "fov": 30.00071327094914,
+    "fov": 30.042592,
     "battle": {
       "state": "command",
       "round": 1,
@@ -202,7 +202,7 @@
       "wpx": 474,
       "quad": 474,
       "worldX": 131.17,
-      "worldZ": 134.03,
+      "worldZ": 133.39,
       "shown": true
     },
     {
@@ -214,7 +214,7 @@
       "wpx": 67,
       "quad": 101,
       "worldX": 28.83,
-      "worldZ": 48.03,
+      "worldZ": 47.39,
       "shown": true
     },
     {
@@ -226,7 +226,7 @@
       "wpx": 79,
       "quad": 90,
       "worldX": 27.68,
-      "worldZ": 48.83,
+      "worldZ": 48.19,
       "shown": true
     },
     {
@@ -238,7 +238,7 @@
       "wpx": 72,
       "quad": 90,
       "worldX": 29.98,
-      "worldZ": 48.83,
+      "worldZ": 48.19,
       "shown": true
     },
     {
@@ -250,27 +250,27 @@
       "wpx": 70,
       "quad": 94,
       "worldX": 28.83,
-      "worldZ": 50.08,
+      "worldZ": 49.44,
       "shown": true
     },
     {
-      "x": 774,
-      "y": 390,
-      "h": 39,
-      "top": 351,
-      "bottom": 390,
-      "wpx": 39,
-      "quad": 39,
+      "x": 777,
+      "y": 410,
+      "h": 40,
+      "top": 370,
+      "bottom": 410,
+      "wpx": 40,
+      "quad": 40,
       "worldX": 32.4,
       "worldZ": 48.27,
       "shown": false
     },
     {
-      "x": 1131,
-      "y": 348,
+      "x": 1143,
+      "y": 366,
       "h": 36,
-      "top": 312,
-      "bottom": 348,
+      "top": 330,
+      "bottom": 366,
       "wpx": 36,
       "quad": 36,
       "worldX": 39,
@@ -278,35 +278,35 @@
       "shown": false
     },
     {
-      "x": 168,
-      "y": 452,
-      "h": 39,
-      "top": 413,
-      "bottom": 452,
-      "wpx": 39,
-      "quad": 39,
+      "x": 159,
+      "y": 481,
+      "h": 40,
+      "top": 441,
+      "bottom": 481,
+      "wpx": 40,
+      "quad": 40,
       "worldX": 22,
       "worldZ": 49.67,
       "shown": false
     },
     {
       "x": 697,
-      "y": -81,
-      "h": 25,
-      "top": -106,
-      "bottom": -81,
-      "wpx": 25,
-      "quad": 25,
+      "y": -66,
+      "h": 26,
+      "top": -92,
+      "bottom": -66,
+      "wpx": 26,
+      "quad": 26,
       "worldX": 31.5,
       "worldZ": 31.67,
       "shown": false
     },
     {
-      "x": 493,
-      "y": 227,
+      "x": 490,
+      "y": 245,
       "h": 34,
-      "top": 193,
-      "bottom": 227,
+      "top": 211,
+      "bottom": 245,
       "wpx": 34,
       "quad": 34,
       "worldX": 27,
@@ -314,13 +314,13 @@
       "shown": false
     },
     {
-      "x": 882,
-      "y": 291,
-      "h": 35,
-      "top": 255,
-      "bottom": 291,
-      "wpx": 35,
-      "quad": 35,
+      "x": 887,
+      "y": 306,
+      "h": 36,
+      "top": 270,
+      "bottom": 306,
+      "wpx": 36,
+      "quad": 36,
       "worldX": 34.7,
       "worldZ": 45.37,
       "shown": false
@@ -334,7 +334,7 @@
       "wpx": 47,
       "quad": 93,
       "worldX": 30.08,
-      "worldZ": 44.13,
+      "worldZ": 43.49,
       "shown": true
     }
   ],
