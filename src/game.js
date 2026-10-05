@@ -705,23 +705,39 @@ export async function createGame({ canvas, uiRoot }) {
     const ids = (Array.isArray(SHOP.stock) ? SHOP.stock : []).filter((id) => ITEMS[id]);
     if (!ids.length) return;
 
-    // Rows are rebuilt from the bag every time, so the purse and the "ne hai N"
-    // counts move together with the purchase instead of being patched in place.
-    const rows = () => ids.map((id) => ({
+    // What he pays for what you bring him. The RATE is data (`shop.json`), so
+    // rebalancing the economy is a JSON edit, and the price is computed at the
+    // counter rather than stored on the item — a stored copy would drift the
+    // moment a buy price changed.
+    const rate = Number.isFinite(SHOP.sellRate) ? SHOP.sellRate : 0.5;
+    const sellPrice = (id) => Math.max(1, Math.floor((ITEMS[id]?.price ?? 0) * rate));
+
+    // Both sides are rebuilt from the bag on every trade, so the purse and the
+    // "ne ho N" counts move together instead of being patched in place.
+    const buyRows = () => ids.map((id) => ({
       id,
       name: ITEMS[id].name,
       price: ITEMS[id].price ?? 0,
       note: SHOP.note?.[id] || '',
       owned: bag.count(id),
     }));
+    const sellRows = () => bag.entries()
+      .filter(({ id }) => ITEMS[id])
+      .map(({ id, def, count }) => ({
+        id,
+        name: def.name,
+        price: sellPrice(id),
+        note: SHOP.note?.[id] || '',
+        owned: count,
+      }));
+    const snapshot = () => ({ buy: buyRows(), sell: sellRows(), gold: bag.gold });
 
     mode = 'shop';
     hud.setVisible(false);
     hintText = null;
     await shop.open({
       title: SHOP.title || 'Bottega',
-      stock: rows(),
-      gold: bag.gold,
+      ...snapshot(),
       onBuy: (id) => {
         const def = ITEMS[id];
         if (!def) return null;
@@ -732,7 +748,20 @@ export async function createGame({ canvas, uiRoot }) {
           return null;
         }
         hud.toast(`Comprato ${def.name}`, 1200);
-        return { stock: rows(), gold: bag.gold };
+        return snapshot();
+      },
+      onSell: (id) => {
+        const def = ITEMS[id];
+        if (!def) return null;
+        const price = sellPrice(id);
+        // Nothing to hand over is a REFUSAL, not a silent no-op: the player
+        // pressed a key and should be told why nothing moved.
+        if (!bag.sell(id, price)) {
+          hud.toast(`Non ne hai: ${def.name}`, 1200);
+          return null;
+        }
+        hud.toast(`Venduto ${def.name} per ${price} oro`, 1200);
+        return snapshot();
       },
     });
     hud.setVisible(true);

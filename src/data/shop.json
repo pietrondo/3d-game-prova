@@ -2,6 +2,7 @@
   "id": "ivo",
   "title": "Bottega di Ivo",
   "stock": ["tonic", "ether", "phoenix_bloom"],
+  "sellRate": 0.5,
   "note": {
     "tonic": "cura 40 PV",
     "ether": "restituisce 15 PM",

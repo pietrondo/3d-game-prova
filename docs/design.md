@@ -123,6 +123,16 @@ A `kind: 'shop'` marker is REPEATABLE and is never marked used. A shop you can o
 enter once is a vending machine, and the gold from the next fight would have
 nowhere to go. Every other marker is one-shot.
 
+The counter has two sides, switched with left/right, which are also the movement
+keys — safe to reuse BECAUSE the shop holds `mode = 'shop'` and `moveLeader` is
+gated on the overworld, so nothing else is reading them. Buying lists the stock;
+selling lists what the bag actually holds, because a row for an item you do not
+have is a lie. `sellRate` in `shop.json` is what he pays, so rebalancing is a JSON
+edit and the price is computed at the counter rather than stored on the item.
+
+`inventory.sell(id, price)` is `buy`'s mirror and atomic for the same reason: check
+the item exists, check the price, then remove and pay in one step.
+
 The purse starts at zero on purpose and the wreck pays 40, because the blacksmith
 is reachable in the first minute while the first fight pays 7 and a tonic costs 30:
 without the wreck the shop exists and cannot be used, which is a locked door with

@@ -250,4 +250,42 @@ describe('inventory', () => {
     expect(bag.count('tonic')).toBe(2);
     expect(bag.gold).toBe(10);
   });
+
+  it('sell hands over the item and pays, as ONE operation', () => {
+    const bag = createInventory(ITEMS);
+    bag.add('tonic', 1);
+    expect(bag.sell('tonic', 15)).toBe(true);
+    expect(bag.count('tonic')).toBe(0);
+    expect(bag.gold).toBe(15);
+  });
+
+  it('sell refuses what the bag does not hold, and pays nothing', () => {
+    const bag = createInventory(ITEMS);
+    expect(bag.sell('tonic', 15)).toBe(false);
+    expect(bag.gold).toBe(0);
+    expect(bag.count('tonic')).toBe(0);
+    // An id outside the catalogue is refused the same way.
+    expect(bag.sell('sword', 50)).toBe(false);
+    expect(bag.gold).toBe(0);
+  });
+
+  it('sell refuses a nonsense price without taking the item', () => {
+    const bag = createInventory(ITEMS);
+    bag.add('tonic', 2);
+    for (const bad of [0, -5, 12.5, '15', NaN, Infinity, null, undefined]) {
+      expect(bag.sell('tonic', bad)).toBe(false);
+    }
+    expect(bag.count('tonic')).toBe(2);   // the item must still be there
+    expect(bag.gold).toBe(0);
+  });
+
+  it('buy then sell loses the spread and never gains gold from nothing', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(30);
+    expect(bag.buy('tonic', 30)).toBe(true);
+    expect(bag.gold).toBe(0);
+    expect(bag.sell('tonic', 15)).toBe(true);
+    expect(bag.gold).toBe(15);
+    expect(bag.count('tonic')).toBe(0);
+  });
 });

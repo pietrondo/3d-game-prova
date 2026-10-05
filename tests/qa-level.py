@@ -264,6 +264,46 @@ def main():
         }""")
         check("a refused buy is visible to the player", seen is True, seen)
 
+        # ---- the sell side -------------------------------------------------
+        # Ivo's own line is "portamelo e ci diamo un'occhiata" — BRING it to me.
+        # The counter only bought, so the promise the dialogue makes was the one
+        # thing the shop could not do.
+        qa_drive.tap(page, "ArrowRight", hold=60, settle=300)
+        side = page.evaluate("() => window.__hd2d.shopState")
+        check("right switches to the sell side", side["mode"] == "sell", side["mode"])
+        check("the sell side lists what is carried", len(side["rows"]) > 0, side["rows"])
+        page.screenshot(path=str(SHOTS / "08-shop-sell.png"))
+        print(f"  shot  {(SHOTS / '08-shop-sell.png').relative_to(ROOT)}")
+
+        row = side["rows"][0]
+        before_sell = page.evaluate("() => window.__hd2d.bag")
+        qa_drive.tap(page)   # Enter sells the selected row
+        page.wait_for_timeout(300)
+        after_sell = page.evaluate("() => window.__hd2d.bag")
+        check("selling hands over the item",
+              after_sell["items"].get(row["id"], 0) == before_sell["items"].get(row["id"], 0) - 1,
+              f"{before_sell['items']} -> {after_sell['items']}")
+        check("selling pays the sell price",
+              after_sell["gold"] == before_sell["gold"] + row["price"],
+              f"{before_sell['gold']} + {row['price']} -> {after_sell['gold']}")
+
+        # Empty the stack: the row must go, because it lists what is CARRIED and
+        # nothing else, and a row for an item you do not have is a lie.
+        for _ in range(12):
+            if page.evaluate(f"() => window.__hd2d.bag.items['{row['id']}'] || 0") == 0:
+                break
+            qa_drive.tap(page)
+            page.wait_for_timeout(140)
+        left = page.evaluate("() => window.__hd2d.bag")
+        gone = page.evaluate(f"() => window.__hd2d.shopState.rows.some(r => r.id === '{row['id']}')")
+        check("the stack empties", (left["items"].get(row["id"], 0)) == 0, left["items"])
+        check("an empty stack leaves the sell list", gone is False, gone)
+
+        # Back to buy, then leave: left/right must not be one-way.
+        qa_drive.tap(page, "ArrowLeft", hold=60, settle=300)
+        back = page.evaluate("() => window.__hd2d.shopState")
+        check("left switches back to the buy side", back["mode"] == "buy", back["mode"])
+
         qa_drive.tap(page, "Escape", hold=50, settle=300)
         check("Esc leaves the counter",
               page.evaluate("() => window.__hd2d.shopState.open") is False)

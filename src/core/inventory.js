@@ -98,6 +98,25 @@ export function createInventory(items = {}) {
       return true;
     },
 
+    /**
+     * Sell one `id` for `price`. The mirror of `buy`, and atomic for the same
+     * reason: check the item exists, check the price is payable, then remove and
+     * pay in one step. A caller doing `if (bag.count(id)) { bag.add(id, -1);
+     * bag.addGold(price); }` can take the item and pay nothing if anything throws
+     * between the two.
+     *
+     * `price` comes from the caller, so the sell rate lives in the shop's data and
+     * not in a stored copy of it.
+     */
+    sell(id, price) {
+      if (!counts.has(id)) return false;
+      if ((counts.get(id) || 0) <= 0) return false;   // nothing to hand over
+      if (!Number.isInteger(price) || price <= 0) return false;
+      this.add(id, -1);
+      this.addGold(price);
+      return true;
+    },
+
     get gold() { return gold; },
 
     /**
