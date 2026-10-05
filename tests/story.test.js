@@ -49,22 +49,30 @@ describe('the area registry', () => {
     }
   });
 
-  it('points every exit at an area that exists, named by a marker that exists', () => {
+  it('points every exit marker at an area that exists', () => {
+    // The destination lives on the MARKER, not in the registry: one source of
+    // truth. A door to an area nobody defined is a door to nowhere, and it fails
+    // in silence at the moment the player walks through it.
+    let exits = 0;
     for (const [key, def] of areas) {
-      const ids = new Set(def.markers.map((m) => m.id));
-      for (const [markerId, to] of Object.entries(def.exits || {})) {
-        expect(AREAS[to], `${key}: exit "${markerId}" goes to "${to}", which does not exist`).toBeTruthy();
-        expect(ids.has(markerId), `${key}: exit marker "${markerId}" is not in its marker table`).toBe(true);
+      for (const m of def.markers) {
+        if (m.kind !== 'exit') continue;
+        exits++;
+        expect(typeof m.to, `${key}: exit "${m.id}" has no destination`).toBe('string');
+        expect(AREAS[m.to], `${key}: exit "${m.id}" goes to "${m.to}", which does not exist`).toBeTruthy();
+        expect(m.to, `${key}: exit "${m.id}" goes to its own area`).not.toBe(key);
       }
     }
+    expect(exits, 'no exit marker anywhere: the second area is unreachable').toBeGreaterThan(0);
   });
 
-  it('gives every area an exit unless it is the start', () => {
+  it('gives every area that is not the start a way out', () => {
     // A place you can enter and not leave is a trap, and the cheapest way to find
     // that out is a test rather than a player.
     for (const [key, def] of areas) {
       if (key === START_AREA) continue;
-      expect(Object.keys(def.exits || {}).length, `${key} has no way out`).toBeGreaterThan(0);
+      const outs = def.markers.filter((m) => m.kind === 'exit');
+      expect(outs.length, `${key} has no way out`).toBeGreaterThan(0);
     }
   });
 });

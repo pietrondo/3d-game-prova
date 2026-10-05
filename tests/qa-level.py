@@ -29,7 +29,7 @@ PAGE = """
 async () => {
   const H = window.__hd2d;
   if (!H) return { error: 'no __hd2d handle' };
-  return { ...H.state, level: H.level, bag: H.bag, village: H.village };
+  return { ...H.state, level: H.level, bag: H.bag, village: H.village, area: H.area };
 }
 """
 
@@ -259,10 +259,21 @@ def main():
         # `.hud`, so "non bastano i soldi" was a message nobody could read.
         seen = page.evaluate("""() => {
           const t = document.querySelector('.hud-toast');
-          if (!t) return false;
-          return getComputedStyle(t).display !== 'none' && t.getBoundingClientRect().height > 0;
+          const hud = document.querySelector('.hud');
+          if (!t) return { found: false, hudHidden: hud ? hud.hidden : null };
+          const cs = getComputedStyle(t);
+          const r = t.getBoundingClientRect();
+          return {
+            found: true, text: t.textContent, display: cs.display, visibility: cs.visibility,
+            opacity: cs.opacity, h: Math.round(r.height), w: Math.round(r.width),
+            hudDisplay: hud ? getComputedStyle(hud).display : null,
+            hudHidden: hud ? hud.hidden : null,
+            hudClass: hud ? hud.className : null,
+          };
         }""")
-        check("a refused buy is visible to the player", seen is True, seen)
+        check("a refused buy is visible to the player",
+              seen.get("found") is True and seen.get("display") != "none" and seen.get("h", 0) > 0,
+              seen)
 
         # ---- the sell side -------------------------------------------------
         # Ivo's own line is "portamelo e ci diamo un'occhiata" — BRING it to me.
@@ -307,6 +318,45 @@ def main():
         qa_drive.tap(page, "Escape", hold=50, settle=300)
         check("Esc leaves the counter",
               page.evaluate("() => window.__hd2d.shopState.open") is False)
+
+        print("\n== the second area ==")
+        # The story climbs to the plateau. This walks through the door and back,
+        # because a second area that is not reachable is data, not a level.
+        home_bag = page.evaluate("() => window.__hd2d.bag")
+        home_area = page.evaluate("() => window.__hd2d.area.id")
+        climb = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'salita')")
+        check("the first area has a way up", climb is not None, climb)
+        page.evaluate(f"() => window.__hd2d.teleport({climb['x']}, {climb['z']})")
+        page.wait_for_timeout(400)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
+        # The swap is a fade out, a rebuild, a fade back: bounded, never a blind sleep.
+        page.wait_for_function("() => window.__hd2d.area.id !== 'riva'", timeout=15000)
+        page.wait_for_timeout(600)
+        up = page.evaluate(PAGE)
+        check("the climb changes the area", up["area"]["id"] == "altipiano", up["area"]["id"])
+        check("the second area has its own level", up["level"]["id"] == "level2", up["level"]["id"])
+        check("the second area has its own markers", len(page.evaluate("() => window.__hd2d.markers")) > 0)
+        check("the bag crosses the transition untouched", up["bag"] == home_bag,
+              f"{home_bag} -> {up['bag']}")
+        landed = page.evaluate("() => window.__hd2d.leaderPos()")
+        check("the party arrives on the second area's own map",
+              page.evaluate(f"() => window.__hd2d.walkable({landed[0]}, {landed[1]})") is True, landed)
+        check("no page errors after a transition", not errors, (errors or [])[:2])
+        page.screenshot(path=str(SHOTS / "09-altipiano.png"))
+        print(f"  shot  {(SHOTS / '09-altipiano.png').relative_to(ROOT)}")
+
+        # And back down, so the rest of this pass runs where it started.
+        down = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'uscita')")
+        check("the second area has a way down", down is not None, down)
+        page.evaluate(f"() => window.__hd2d.teleport({down['x']}, {down['z']})")
+        page.wait_for_timeout(400)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
+        page.wait_for_function("() => window.__hd2d.area.id === 'riva'", timeout=15000)
+        page.wait_for_timeout(600)
+        back_home = page.evaluate("() => window.__hd2d.area.id")
+        check("and back", back_home == home_area, f"{home_area} -> {back_home}")
 
         print("\n== save / load ==")
         saved = page.evaluate("() => window.__hd2d.save()")

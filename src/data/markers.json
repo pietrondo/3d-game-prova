@@ -57,6 +57,18 @@
     ]
   },
   {
+    "id": "salita",
+    "name": "il Canalone",
+    "dx": 0,
+    "dz": -16.0,
+    "kind": "exit",
+    "to": "altipiano",
+    "lines": [
+      { "speaker": "il Canalone", "text": "Una fenditura nella pietra, larga quanto un uomo, che sale invece di scendere." },
+      { "speaker": "Vell la Cartografa", "text": "Da l\u00ec si sale sull'altipiano. Se ci vai, io vengo con te: non ti mando su da sola." }
+    ]
+  },
+  {
     "id": "fabbro",
     "name": "il Fabbro",
     "anchor": "smith",

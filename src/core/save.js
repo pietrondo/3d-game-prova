@@ -62,7 +62,7 @@ function trimBag(bag) {
   return { gold: bag.gold, items };
 }
 
-export function createSave({ level, bag, allies, leader, partyIds, markers = [] }) {
+export function createSave({ level, bag, allies, leader, partyIds, markers = [], area = null }) {
   const store = storage();
 
   /** Build the payload. Kept separate so the QA handle can inspect it. */
@@ -70,6 +70,9 @@ export function createSave({ level, bag, allies, leader, partyIds, markers = [] 
     return {
       version: VERSION,
       at: Date.now(),
+      // WHICH area. The player's (x, z) is meaningless in another area, so a save
+      // without this could only ever resume into the one the game starts in.
+      area: area ? area.id : null,
       level: level.snapshot(),
       player: { x: +leader.position.x.toFixed(2), z: +leader.position.z.toFixed(2) },
       party: allies.map((a) => ({
@@ -194,3 +197,24 @@ export function createSave({ level, bag, allies, leader, partyIds, markers = [] 
 }
 
 export { KEY as SAVE_KEY, VERSION as SAVE_VERSION };
+
+/**
+ * The area a stored save belongs to, or null.
+ *
+ * Read WITHOUT constructing a save instance, because boot has to choose which
+ * area to BUILD before it can build the save that refers to it — the world is a
+ * factory now, and the save is created from the world.
+ */
+export function savedAreaId() {
+  const store = storage();
+  if (!store) return null;
+  try {
+    const raw = store.getItem(KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || data.version !== VERSION) return null;
+    return typeof data.area === 'string' ? data.area : null;
+  } catch {
+    return null;
+  }
+}

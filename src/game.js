@@ -54,7 +54,7 @@ import { createStage, toCombatant } from './battle/stage.js';
 import { el } from './battle/commands.js';
 import { createInventory } from './core/inventory.js';
 import { createLevel, EVENTS } from './core/level.js';
-import { createSave } from './core/save.js';
+import { createSave, savedAreaId } from './core/save.js';
 import { createTitle } from './ui/title.js';
 import { createShop } from './ui/shop.js';
 import { createArea } from './game/area.js';
@@ -103,7 +103,12 @@ export async function createGame({ canvas, uiRoot }) {
   // them, which is why they are `let` and why the world is a factory: it can be
   // built and thrown away, so a second area is a lookup and not a second copy of
   // the game.
-  let area = createArea({ engine, def: AREAS[START_AREA] });
+  //
+  // WHICH area comes from the save. A resumed game is in the area it was saved
+  // in, and the party's (x, z) is meaningless anywhere else — resuming into the
+  // start area would drop the party at coordinates from another map.
+  const bootAreaId = savedAreaId() ?? START_AREA;
+  let area = createArea({ engine, def: AREAS[bootAreaId] ?? AREAS[START_AREA] });
   let { sky, terrain, village, props, colliders, spawn } = area;
   let MARKERS = area.def.markers;   // CONTENT, from data/markers.json
   let LEVEL = area.def.level;       // this area's level definition
@@ -121,15 +126,22 @@ export async function createGame({ canvas, uiRoot }) {
   let nextRoll = ROLLS_GRACE;
 
   // ---------------------------------------------------------------- world ---
-  // The world — sky, terrain, terrace, village, props, colliders, spawn — is
-  // built by `createArea` from the area registry and destructured at module
-  // scope. What the director keeps is the PARTY, because the party is the player
-  // and has to survive a transition, and aliases to the area's own searches so
-  // the call sites below read exactly as they did when this was all one file.
-  const party = createParty({
-    memberIds: PARTY_IDS, data: ACTORS, terrain, colliders, scene: engine.scene,
-  });
-  const { clearSpot, markerSpot, inVillage } = area;
+  // The world — sky, terrain, terrace, village, props, colliders, spawn — is built
+  // by `createArea` from the area registry. The director keeps the PARTY, because
+  // the party is the player and has to survive a transition, and aliases to the
+  // area's own searches so the call sites read as they did when this was one file.
+  //
+  // Every one of these is rebound by `enterArea()`: an actor captures its terrain
+  // and its collider set in its own closure, so a new area means new actors, and
+  // `createStage` captures the terrain and the party, so the stage is rebuilt too.
+  let party;
+  function buildParty() {
+    party = createParty({
+      memberIds: PARTY_IDS, data: ACTORS, terrain, colliders, scene: engine.scene,
+    });
+  }
+  buildParty();
+  let { clearSpot, markerSpot, inVillage } = area;
 
   /**
    * Put the WHOLE party at (x, z) as a short trail, every member cleared against
@@ -228,21 +240,64 @@ export async function createGame({ canvas, uiRoot }) {
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   })();
-  const markerGroup = new THREE.Group();
-  const markers = MARKERS.map((m, i) => {
-    const at = markerSpot(m);
-    // clearSpot against the VILLAGE colliders too: the elder stands beside the
-    // well, and the marker nudge must not park the talking point inside a house.
-    const spot = clearSpot(at.x, at.z);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTex, depthTest: false, transparent: true }));
-    sprite.renderOrder = 5;
-    sprite.scale.setScalar(0.7);
-    sprite.position.set(spot.x, terrain.heightAt(spot.x, spot.z) + 1.5, spot.z);
-    sprite.userData = { base: sprite.position.y, phase: i * 1.3 };
-    markerGroup.add(sprite);
-    return { ...m, x: spot.x, z: spot.z, sprite, used: false, visited: false };
-  });
+  // Rebuilt on every area change, so this is a function and the two bindings are
+  // `let`: a transition disposes the old sprites and builds the new area's. The
+  // GROUP is reused (cleared, not replaced) so the scene graph keeps one node.
+  /**
+   * Marker progress, kept ACROSS a transition the same way HP and the bag are —
+   * because a transition rebuilds the area, and rebuilding used to hand the player
+   * back the wreck they had already emptied. Measured: after climbing to the
+   * plateau and coming back down, the cache was lootable again, and the save taken
+   * afterwards recorded it as unlooted.
+   *
+   * Keyed by AREA + id, not by id alone: two areas may both have a marker called
+   * `vell` and they are different people. A bare id would mark the second area's
+   * Vell as already-spoken the moment the first area's was.
+   *
+   * Declared BEFORE `buildMarkers` because that function recalls from this on its
+   * very first call, and a `const` read before its line is a temporal-dead-zone
+   * error — which is a crash at boot, not a warning.
+   */
+  const markerMemory = new Map();
+  const markerKey = (id, markerId) => `${id}:${markerId}`;
+
+  function rememberMarkers() {
+    for (const m of markers) {
+      markerMemory.set(markerKey(area.id, m.id), { used: !!m.used, visited: !!m.visited });
+    }
+  }
+
+  function recallMarkers() {
+    for (const m of markers) {
+      const s = markerMemory.get(markerKey(area.id, m.id));
+      if (s) { m.used = s.used; m.visited = s.visited; }
+    }
+  }
+
+  let markerGroup = new THREE.Group();
+  let markers = [];
   engine.scene.add(markerGroup);
+
+  /** Place the current area's markers. Called at boot and on every transition. */
+  function buildMarkers() {
+    for (const m of markers) m.sprite.material.dispose();
+    markerGroup.clear();
+    markers = MARKERS.map((m, i) => {
+      const at = markerSpot(m);
+      // clearSpot against the VILLAGE colliders too: the elder stands beside the
+      // well, and the marker nudge must not park the talking point inside a house.
+      const spot = clearSpot(at.x, at.z);
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTex, depthTest: false, transparent: true }));
+      sprite.renderOrder = 5;
+      sprite.scale.setScalar(0.7);
+      sprite.position.set(spot.x, terrain.heightAt(spot.x, spot.z) + 1.5, spot.z);
+      sprite.userData = { base: sprite.position.y, phase: i * 1.3 };
+      markerGroup.add(sprite);
+      return { ...m, x: spot.x, z: spot.z, sprite, used: false, visited: false };
+    });
+    recallMarkers();
+  }
+  buildMarkers();
 
   const nearestMarker = () => {
     const l = party.leader.position;
@@ -323,10 +378,16 @@ export async function createGame({ canvas, uiRoot }) {
   const resetWander = (gap) => { walked = 0; nextRoll = gap; };
 
   // ----------------------------------------------------------------- stage ---
-  const stage = createStage({
-    engine, terrain, party, root: uiRoot, allies, actorOf, popY, hud,
-    input, hitStop, syncHud, fade, fovWorld: FOV_WORLD, dofWorld: DOF_WORLD, rng, bag,
-  });
+  // Rebuilt by `enterArea`: the stage holds the terrain (it stages the battle on
+  // it) and the party, and both are new after a transition.
+  let stage;
+  function buildStage() {
+    stage = createStage({
+      engine, terrain, party, root: uiRoot, allies, actorOf, popY, hud,
+      input, hitStop, syncHud, fade, fovWorld: FOV_WORLD, dofWorld: DOF_WORLD, rng, bag,
+    });
+  }
+  buildStage();
 
   async function startEncounter(zone, forced) {
     if (encounterLock) return;
@@ -368,9 +429,14 @@ export async function createGame({ canvas, uiRoot }) {
 
   // ------------------------------------------------------ level + saving ---
   //
-  // The level is DATA (data/level1.json) driven by a pure machine (core/level.js).
-  // The director's only job is to feed it events and show what it answers.
-  const level = createLevel(LEVEL, { intro: LEVEL.intro });
+  // The level is DATA (data/level1.json, level2.json) driven by a pure machine
+  // (core/level.js). The director's only job is to feed it events and show what it
+  // answers. Rebound by `enterArea`: each area has its own level.
+  let level;
+  function buildLevel() {
+    level = createLevel(LEVEL, { intro: LEVEL.intro });
+  }
+  buildLevel();
   // True while a `hintOnly` briefing is up: mode is 'dialogue' so the box is
   // dismissible, but the world keeps running underneath it. The distinction is
   // the whole point of the flag — see speakStage().
@@ -504,6 +570,21 @@ export async function createGame({ canvas, uiRoot }) {
     // Every visit, not just the first: a shop you can only enter once is a
     // vending machine, and the gold from the next fight would have nowhere to go.
     if (repeatable) await openShop();
+    // An exit is a door. Fade, swap the world in place, fade back — no reload, and
+    // the party's HP, MP and bag cross untouched.
+    if (m.kind === 'exit' && m.to) {
+      mode = 'transition';
+      await fade(true);
+      const moved = enterArea(m.to);
+      mode = 'overworld';
+      applyHint();
+      await fade(false);
+      if (moved) {
+        hud.toast(AREAS[m.to].name, 2200);
+        autosave();
+      }
+      return;
+    }
     mode = 'overworld';
     applyHint();
     autosave();
@@ -777,6 +858,73 @@ export async function createGame({ canvas, uiRoot }) {
     if (idleFrames < IDLE_EVERY || idleFrames % IDLE_EVERY === 0) engine.render();
   }
 
+  // ------------------------------------------------------------ transition ---
+  /**
+   * Move the party to another area, rebuilding everything the area owns.
+   *
+   * In place: no page reload, no black loading screen — the caller fades, swaps,
+   * and fades back. That is why every area-dependent piece is a builder rather
+   * than a `const`: an actor captures its terrain and collider set in a closure,
+   * and `createStage` captures the terrain and the party, so a new area means new
+   * actors and a new stage.
+   *
+   * The PARTY STATE IS NOT TOUCHED. `allies` (HP, MP, gold, the bag) is the
+   * player, not the world, and it crosses the transition untouched — that is the
+   * whole point of keeping it out of `createArea`.
+   *
+   * Returns false for an unknown area, so a bad exit in the data leaves the player
+   * where they were instead of in an empty scene.
+   */
+  function enterArea(id, { at = null } = {}) {
+    const def = AREAS[id];
+    if (!def) {
+      console.error(`[hd2d] no area "${id}"; the exit points nowhere`);
+      return false;
+    }
+
+    // ---- tear down, in the reverse order of construction -------------------
+    // Marker progress first: the rebuild hands out fresh markers, so what has
+    // already been taken has to be remembered BEFORE they are thrown away.
+    rememberMarkers();
+    // The stage first: it owns the battle prompt and holds the old terrain.
+    stage.dispose();
+    // Actors hold their terrain and colliders, so they must go before the world.
+    party.dispose();
+    // Markers are the area's, and their materials are per-sprite.
+    for (const m of markers) m.sprite.material.dispose();
+    markerGroup.clear();
+    markers = [];
+    // The world last.
+    area.dispose();
+
+    // ---- rebuild ------------------------------------------------------------
+    area = createArea({ engine, def });
+    ({ sky, terrain, village, props, colliders, spawn } = area);
+    ({ clearSpot, markerSpot, inVillage } = area);
+    MARKERS = def.markers;
+    LEVEL = def.level;
+    buildParty();
+    buildMarkers();
+    buildLevel();
+    buildStage();
+    // The save refers to the level and the markers, so it is rebuilt last.
+    buildSave();
+
+    // Park the party at the arrival point and put the camera there in ONE step:
+    // letting the camera lerp from the previous area's coordinates would fly it
+    // across the map.
+    const sx = at?.x ?? spawn.x;
+    const sz = at?.z ?? spawn.z;
+    placeParty(sx, sz);
+    syncActors();
+    syncHud();
+    focusX = sx;
+    focusZ = sz;
+    engine.setCameraTarget(sx, terrain.heightAt(sx, sz) + 1.4, sz);
+    walked = 0;
+    return true;
+  }
+
   // ----------------------------------------------------------------- boot ---
   // ----------------------------------------------------------------- title ---
   // The game opens on the title, not on the intro. See ui/title.js for why, but
@@ -824,6 +972,7 @@ export async function createGame({ canvas, uiRoot }) {
       a.boosted = false;
     }
     for (const m of markers) { m.used = false; m.visited = false; }
+    markerMemory.clear();
     placeParty(spawn.x, spawn.z);
     focusX = spawn.x;
     focusZ = spawn.z;
@@ -879,7 +1028,11 @@ export async function createGame({ canvas, uiRoot }) {
   // terrain or props would only give a save a way to disagree with the island
   // the game actually built. A fresh game is "no save", which is also what a
   // corrupt or future-versioned slot falls back to.
-  const save = createSave({ level, bag, allies, leader: party.leader, partyIds: PARTY_IDS, markers });
+  let save;
+  function buildSave() {
+    save = createSave({ level, bag, allies, leader: party.leader, partyIds: PARTY_IDS, markers, area });
+  }
+  buildSave();
   function restore() {
     const data = save.load();
     if (!data) return false;
@@ -964,8 +1117,20 @@ export async function createGame({ canvas, uiRoot }) {
     get level() {
       const s = level.stage;
       return {
-        id: LEVEL.id, index: level.index, complete: level.isComplete,
+        id: LEVEL.id, areaId: area.id, index: level.index, complete: level.isComplete,
         stage: s ? s.id : null, objective: level.objective,
+      };
+    },
+    // Which world is loaded, and what it calls itself. A transition is otherwise
+    // invisible to the harness: the handle would look the same in both areas.
+    get area() {
+      return {
+        id: area.id,
+        name: area.name,
+        map: area.def.map,
+        spawn: area.spawn,
+        colliders: area.colliders.length,
+        props: area.props.count,
       };
     },
     get bag() { return bag.snapshot(); },

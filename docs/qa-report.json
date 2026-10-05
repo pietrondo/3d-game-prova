@@ -13,7 +13,7 @@
     ],
     "tile": "grass",
     "zone": "meadow",
-    "propCount": 369,
+    "propCount": 379,
     "walked": 0,
     "asking": false,
     "draining": false,
@@ -32,24 +32,24 @@
   },
   "chunkinessByScale": {
     "1": {
-      "meanStep": 7.25,
-      "longestFlatRun": 103,
-      "distinct": 149
+      "meanStep": 7.4,
+      "longestFlatRun": 104,
+      "distinct": 153
     },
     "2": {
-      "meanStep": 7.06,
+      "meanStep": 7.14,
       "longestFlatRun": 105,
-      "distinct": 146
+      "distinct": 150
     },
     "3": {
-      "meanStep": 6.94,
+      "meanStep": 6.97,
       "longestFlatRun": 105,
-      "distinct": 143
+      "distinct": 142
     },
     "4": {
-      "meanStep": 6.32,
+      "meanStep": 6.42,
       "longestFlatRun": 103,
-      "distinct": 124
+      "distinct": 132
     }
   },
   "partyOverlapPct": 16.1,
@@ -112,17 +112,17 @@
     "pct": 6.3
   },
   "blocked": {
-    "blocked": 88,
-    "walkable": 440,
-    "offIsland": 1,
+    "blocked": 54,
+    "walkable": 414,
+    "offIsland": 27,
     "total": 441,
     "where": "wilderness",
-    "pct": 20.0
+    "pct": 13.0
   },
   "walk": {
-    "real": 3.23,
-    "walked": 3.2,
-    "errorPct": 0.9
+    "real": 3.15,
+    "walked": 3.1,
+    "errorPct": 1.6
   },
   "battleState": {
     "mode": "battle",
@@ -134,12 +134,12 @@
     "pos": [
       30.08,
       0.37,
-      47.25
+      47.33
     ],
     "tile": "grass",
     "zone": "meadow",
-    "propCount": 369,
-    "walked": 3.2,
+    "propCount": 379,
+    "walked": 3.1,
     "asking": true,
     "draining": false,
     "queued": 0,
@@ -155,9 +155,9 @@
     "camera": [
       30.08,
       17.2,
-      66.48
+      66.57
     ],
-    "fov": 30.00143164399897,
+    "fov": 30.00366684548105,
     "battle": {
       "state": "command",
       "round": 1,
@@ -202,7 +202,7 @@
       "wpx": 474,
       "quad": 474,
       "worldX": 131.17,
-      "worldZ": 134.15,
+      "worldZ": 134.23,
       "shown": true
     },
     {
@@ -214,19 +214,19 @@
       "wpx": 67,
       "quad": 101,
       "worldX": 28.83,
-      "worldZ": 48.15,
+      "worldZ": 48.23,
       "shown": true
     },
     {
       "x": 482,
-      "y": 462,
+      "y": 463,
       "h": 90,
       "top": 372,
-      "bottom": 462,
+      "bottom": 463,
       "wpx": 79,
       "quad": 90,
       "worldX": 27.68,
-      "worldZ": 48.95,
+      "worldZ": 49.03,
       "shown": true
     },
     {
@@ -238,27 +238,27 @@
       "wpx": 72,
       "quad": 90,
       "worldX": 29.98,
-      "worldZ": 48.95,
+      "worldZ": 49.03,
       "shown": true
     },
     {
       "x": 559,
       "y": 515,
       "h": 94,
-      "top": 421,
+      "top": 422,
       "bottom": 515,
       "wpx": 70,
       "quad": 94,
       "worldX": 28.83,
-      "worldZ": 50.2,
+      "worldZ": 50.28,
       "shown": true
     },
     {
-      "x": 774,
-      "y": 384,
+      "x": 773,
+      "y": 380,
       "h": 39,
-      "top": 345,
-      "bottom": 384,
+      "top": 341,
+      "bottom": 380,
       "wpx": 39,
       "quad": 39,
       "worldX": 32.4,
@@ -266,11 +266,11 @@
       "shown": false
     },
     {
-      "x": 1128,
-      "y": 349,
+      "x": 1129,
+      "y": 337,
       "h": 36,
-      "top": 313,
-      "bottom": 349,
+      "top": 302,
+      "bottom": 337,
       "wpx": 36,
       "quad": 36,
       "worldX": 39,
@@ -279,10 +279,10 @@
     },
     {
       "x": 172,
-      "y": 451,
+      "y": 444,
       "h": 39,
-      "top": 413,
-      "bottom": 451,
+      "top": 406,
+      "bottom": 444,
       "wpx": 39,
       "quad": 39,
       "worldX": 22,
@@ -290,11 +290,11 @@
       "shown": false
     },
     {
-      "x": 697,
-      "y": -85,
+      "x": 696,
+      "y": -81,
       "h": 25,
-      "top": -110,
-      "bottom": -85,
+      "top": -106,
+      "bottom": -81,
       "wpx": 25,
       "quad": 25,
       "worldX": 31.5,
@@ -303,10 +303,10 @@
     },
     {
       "x": 493,
-      "y": 218,
+      "y": 222,
       "h": 34,
-      "top": 184,
-      "bottom": 218,
+      "top": 189,
+      "bottom": 222,
       "wpx": 34,
       "quad": 34,
       "worldX": 27,
@@ -314,11 +314,23 @@
       "shown": false
     },
     {
+      "x": 694,
+      "y": -117,
+      "h": 24,
+      "top": -141,
+      "bottom": -117,
+      "wpx": 24,
+      "quad": 24,
+      "worldX": 31.5,
+      "worldZ": 29.17,
+      "shown": false
+    },
+    {
       "x": 881,
-      "y": 286,
+      "y": 276,
       "h": 35,
-      "top": 251,
-      "bottom": 286,
+      "top": 241,
+      "bottom": 276,
       "wpx": 35,
       "quad": 35,
       "worldX": 34.7,
@@ -334,13 +346,13 @@
       "wpx": 47,
       "quad": 93,
       "worldX": 30.08,
-      "worldZ": 44.25,
+      "worldZ": 44.33,
       "shown": true
     }
   ],
   "afterBattle": {
     "mode": "overworld",
-    "sprites": 12,
+    "sprites": 13,
     "battle": {
       "state": "command",
       "round": 1,

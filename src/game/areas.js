@@ -55,8 +55,6 @@ export const AREAS = {
     level: LEVEL1,
     sunDir: [0.6, 0.7, 0.4],
     keepOut: 3,
-    // Where the party goes when they leave by the area's exit.
-    exits: { watch: 'altipiano' },
   },
 
   /**
@@ -81,8 +79,6 @@ export const AREAS = {
     level: LEVEL2,
     sunDir: [0.6, 0.7, 0.4],
     keepOut: 3,
-    // The way back down.
-    exits: { vell: 'riva' },
   },
 };
 
