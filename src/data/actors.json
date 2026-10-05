@@ -1,0 +1,50 @@
+{
+  "olrik": {
+    "name": "Olrik",
+    "sprite": { "kind": "hero", "palette": "warrior", "cell": 24 },
+    "level": 3, "maxHP": 120, "maxMP": 20,
+    "attack": 18, "defense": 12, "magic": 6, "speed": 11,
+    "weaponType": "sword",
+    "resistances": { "physical": 1, "fire": 1, "ice": 0.5, "lightning": 1, "dark": 1, "light": 1 },
+    "immunities": [],
+    "vulnerabilities": [],
+    "skills": ["ember", "guard_up"],
+    "items": ["tonic"]
+  },
+  "brann": {
+    "name": "Brann",
+    "sprite": { "kind": "knight", "palette": "knight", "cell": 24 },
+    "level": 4, "maxHP": 165, "maxMP": 14,
+    "attack": 24, "defense": 18, "magic": 4, "speed": 8,
+    "weaponType": "axe",
+    "resistances": { "physical": 1, "fire": 1, "ice": 2, "dark": 0.5, "light": 1 },
+    "immunities": ["lightning"],
+    "vulnerabilities": [],
+    "skills": ["storm_cleave", "bulwark"],
+    "items": ["tonic"]
+  },
+  "tess": {
+    "name": "Tess",
+    "sprite": { "kind": "scholar", "palette": "scholar", "cell": 24 },
+    "level": 3, "maxHP": 82, "maxMP": 38,
+    "attack": 9, "defense": 7, "magic": 20, "speed": 10,
+    "weaponType": "staff",
+    "resistances": { "physical": 0.5, "fire": 1, "ice": 1, "lightning": 1, "dark": 1, "light": 1 },
+    "immunities": [],
+    "vulnerabilities": ["light"],
+    "skills": ["mend", "frost_bolt", "lumen_bolt"],
+    "items": ["tonic", "ether"]
+  },
+  "maren": {
+    "name": "Maren",
+    "sprite": { "kind": "thief", "palette": "rogue", "cell": 24 },
+    "level": 3, "maxHP": 95, "maxMP": 24,
+    "attack": 16, "defense": 9, "magic": 8, "speed": 16,
+    "weaponType": "bow",
+    "resistances": { "physical": 1, "fire": 0.5, "ice": 1, "lightning": 1, "dark": 1, "light": 1 },
+    "immunities": [],
+    "vulnerabilities": ["dark"],
+    "skills": ["venom_shot", "shadowstep"],
+    "items": ["tonic", "phoenix_bloom"]
+  }
+}

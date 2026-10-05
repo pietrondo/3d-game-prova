@@ -1,0 +1,58 @@
+{
+  "slime": {
+    "name": "Bog Slime",
+    "sprite": { "kind": "slime", "palette": "slime", "cell": 32 },
+    "level": 2, "maxHP": 70, "maxMP": 0,
+    "attack": 12, "defense": 8, "magic": 4, "speed": 7,
+    "weaponType": "dagger",
+    "resistances": { "physical": 0.5, "fire": 2, "ice": 1, "lightning": 1, "dark": 1, "light": 1 },
+    "immunities": [],
+    "vulnerabilities": [],
+    "skills": ["slime_goo"],
+    "items": [],
+    "encounter": { "zone": "meadow", "weight": 5 },
+    "exp": 18, "gold": 7
+  },
+  "bat": {
+    "name": "Gloom Bat",
+    "sprite": { "kind": "bat", "palette": "bat", "cell": 32 },
+    "level": 3, "maxHP": 60, "maxMP": 0,
+    "attack": 16, "defense": 6, "magic": 6, "speed": 15,
+    "weaponType": "dagger",
+    "resistances": { "physical": 0.5, "fire": 1, "ice": 1, "lightning": 2, "dark": 1, "light": 1 },
+    "immunities": [],
+    "vulnerabilities": [],
+    "skills": ["gust_fangs"],
+    "items": [],
+    "encounter": { "zone": "meadow", "weight": 3 },
+    "exp": 22, "gold": 9
+  },
+  "sentinel": {
+    "name": "Stone Sentinel",
+    "sprite": { "kind": "sentinel", "palette": "sentinel", "cell": 32 },
+    "level": 6, "maxHP": 170, "maxMP": 40,
+    "attack": 22, "defense": 18, "magic": 18, "speed": 6,
+    "weaponType": "axe",
+    "resistances": { "physical": 0.5, "fire": 1, "ice": 2, "dark": 1, "light": 1 },
+    "immunities": ["lightning"],
+    "vulnerabilities": [],
+    "skills": ["rune_crush", "sentinel_mend"],
+    "items": [],
+    "encounter": { "zone": "stone", "weight": 2 },
+    "exp": 90, "gold": 45
+  },
+  "ruin_bat": {
+    "name": "Ruin Bat",
+    "sprite": { "kind": "bat", "palette": "bat", "cell": 32 },
+    "level": 5, "maxHP": 95, "maxMP": 0,
+    "attack": 24, "defense": 10, "magic": 8, "speed": 17,
+    "weaponType": "dagger",
+    "resistances": { "physical": 0.5, "fire": 1, "ice": 1, "lightning": 1, "dark": 2, "light": 0.5 },
+    "immunities": [],
+    "vulnerabilities": [],
+    "skills": ["gust_fangs", "shadow_dive"],
+    "items": [],
+    "encounter": { "zone": "stone", "weight": 4 },
+    "exp": 40, "gold": 16
+  }
+}

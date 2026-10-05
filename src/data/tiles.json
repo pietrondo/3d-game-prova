@@ -1,0 +1,8 @@
+{
+  "grass":  { "colors": ["#4a7a3a", "#2f4f27", "#3d6630"], "height": 0.0,  "walkable": true,  "roughness": 1 },
+  "sand":   { "colors": ["#d9c07a", "#a08a4c", "#c2a862"], "height": 0.15, "walkable": true,  "roughness": 0.9 },
+  "stone":  { "colors": ["#8d8a95", "#5c5a64", "#75727d"], "height": 0.5,  "walkable": true,  "roughness": 0.8 },
+  "water":  { "colors": ["#3a6ea5", "#264a72", "#2f5c8c"], "height": -0.4, "walkable": false, "water": true },
+  "cliff":  { "colors": ["#6b5545", "#3f322a", "#574538"], "height": 2.2,  "walkable": false, "roughness": 1 },
+  "moss":   { "colors": ["#3f6b45", "#28462e", "#345a3a"], "height": 0.3,  "walkable": true,  "roughness": 1 }
+}

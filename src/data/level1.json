@@ -1,0 +1,99 @@
+{
+  "id": "level1",
+  "name": "The Wake of the Cartographer",
+
+  "intro": [
+    { "speaker": "", "text": "Vell drew this island from the cliff the night the survey ship stopped answering." },
+    { "speaker": "", "text": "She was right about the shape of it. She did not come back." },
+    { "speaker": "Olrik", "text": "Then we walk it. Waker, you are on point." }
+  ],
+
+  "stages": [
+    {
+      "id": "move",
+      "when": "always",
+      "advance": "onMove",
+      "goal": "Move with WASD",
+      "hintOnly": true,
+      "lines": [
+        { "speaker": "Vell", "text": "You are standing at the drop. Everything from here is inland." },
+        { "speaker": "Vell", "text": "Hold W to walk north, A and D to go sideways. S goes back the way you came." }
+      ]
+    },
+    {
+      "id": "talk",
+      "when": "onMove",
+      "advance": "onTalk",
+      "goal": "Talk to Vell with E",
+      "marker": "Vell",
+      "hintOnly": true,
+      "lines": [
+        { "speaker": "Vell", "text": "Good. You can walk. That was the part I was worried about." },
+        { "speaker": "Vell", "text": "Press E when I am close enough. Talking is how this island still tells us anything." }
+      ]
+    },
+    {
+      "id": "cache",
+      "when": "onTalk",
+      "advance": "onTalk",
+      "goal": "Find the Rusted Cache",
+      "marker": "the Rusted Cache",
+      "lines": [
+        { "speaker": "Vell", "text": "South-west, at the old waypoint. There is a cache under the stone slab." },
+        { "speaker": "Vell", "text": "Whatever is in it is the only reason we get a second fight." }
+      ]
+    },
+    {
+      "id": "heal",
+      "when": "onTalk",
+      "advance": "onTalk",
+      "goal": "Open the menu with Esc, then the Items tab",
+      "marker": "the Rusted Cache",
+      "lines": [
+        { "speaker": "Olrik", "text": "Tonics. Take them." },
+        { "speaker": "Olrik", "text": "Esc opens the menu, and the Items tab is what you are carrying." },
+        { "speaker": "Vell", "text": "In a fight they are a row in the command list, same as a skill." }
+      ]
+    },
+    {
+      "id": "fight",
+      "when": "onTalk",
+      "advance": "onBattle",
+      "goal": "Defeat the Reed Patrol",
+      "marker": "the Reed Patrol",
+      "lines": [
+        { "speaker": "Vell", "text": "They hold the meadow. Not clever, just four of them and not afraid." },
+        { "speaker": "Vell", "text": "When the command list opens, the arrows move and Enter confirms." }
+      ]
+    },
+    {
+      "id": "sentinel",
+      "when": "onBattle",
+      "advance": "onBattle",
+      "goal": "Break the Stone Sentinel on the mesa",
+      "marker": "the Mesa Watch",
+      "lines": [
+        { "speaker": "Vell", "text": "Then there is the Sentinel. It has stood on that mesa since the boat stopped." },
+        { "speaker": "Vell", "text": "It is immune to lightning and hard with everything else. Tess, ice, and only ice." }
+      ]
+    },
+    {
+      "id": "done",
+      "when": "onBattle",
+      "advance": "onTalk",
+      "goal": "Return to Vell",
+      "marker": "Vell",
+      "lines": [
+        { "speaker": "Vell", "text": "So it was a person. I had started to think of it as weather." },
+        { "speaker": "Vell", "text": "The island is ours. The plateau is climbable now, whatever it was holding." },
+        { "speaker": "Olrik", "text": "Then we go up. And we do not stop at the top this time." }
+      ],
+      "completes": true
+    }
+  ],
+
+  "progress": {
+    "flagKey": "level1",
+    "completeText": "The Wake of the Cartographer, complete"
+  }
+}

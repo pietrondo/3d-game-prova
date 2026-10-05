@@ -1,0 +1,378 @@
+{
+  "bootState": {
+    "mode": "overworld",
+    "renderScale": 2,
+    "buffer": [
+      640,
+      360
+    ],
+    "pos": [
+      20.5,
+      0.46,
+      28.5
+    ],
+    "tile": "moss",
+    "zone": "meadow",
+    "propCount": 192,
+    "walked": 0,
+    "asking": false,
+    "draining": false,
+    "queued": 0,
+    "promptOpen": false,
+    "promptRows": [],
+    "promptSel": 0,
+    "camera": [
+      20.5,
+      17.29,
+      46.89
+    ],
+    "fov": 34,
+    "battle": null,
+    "sceneChildren": 9
+  },
+  "chunkinessByScale": {
+    "1": {
+      "meanStep": 8.31,
+      "longestFlatRun": 64,
+      "distinct": 155
+    },
+    "2": {
+      "meanStep": 8.33,
+      "longestFlatRun": 64,
+      "distinct": 155
+    },
+    "3": {
+      "meanStep": 8.02,
+      "longestFlatRun": 60,
+      "distinct": 149
+    },
+    "4": {
+      "meanStep": 7.4,
+      "longestFlatRun": 68,
+      "distinct": 142
+    }
+  },
+  "partyOverlapPct": 12.9,
+  "partySprites": [
+    {
+      "x": -502,
+      "y": 1002,
+      "h": 416,
+      "top": 587,
+      "bottom": 1002,
+      "wpx": 416,
+      "quad": 416,
+      "worldX": 121.99,
+      "worldZ": 114.55,
+      "shown": true
+    },
+    {
+      "x": 610,
+      "y": 422,
+      "h": 77,
+      "top": 345,
+      "bottom": 422,
+      "wpx": 59,
+      "quad": 89,
+      "worldX": 20.5,
+      "worldZ": 28.5,
+      "shown": true
+    },
+    {
+      "x": 657,
+      "y": 394,
+      "h": 75,
+      "top": 318,
+      "bottom": 394,
+      "wpx": 66,
+      "quad": 75,
+      "worldX": 21.65,
+      "worldZ": 27.7,
+      "shown": true
+    },
+    {
+      "x": 561,
+      "y": 393,
+      "h": 75,
+      "top": 318,
+      "bottom": 393,
+      "wpx": 60,
+      "quad": 75,
+      "worldX": 19.35,
+      "worldZ": 27.7,
+      "shown": true
+    },
+    {
+      "x": 616,
+      "y": 352,
+      "h": 73,
+      "top": 279,
+      "bottom": 352,
+      "wpx": 55,
+      "quad": 73,
+      "worldX": 20.5,
+      "worldZ": 26.45,
+      "shown": true
+    },
+    {
+      "x": 621,
+      "y": 490,
+      "h": 38,
+      "top": 452,
+      "bottom": 490,
+      "wpx": 38,
+      "quad": 38,
+      "worldX": 20.5,
+      "worldZ": 31.5,
+      "shown": true
+    },
+    {
+      "x": 438,
+      "y": 307,
+      "h": 32,
+      "top": 275,
+      "bottom": 307,
+      "wpx": 32,
+      "quad": 32,
+      "worldX": 16.5,
+      "worldZ": 26.5,
+      "shown": true
+    },
+    {
+      "x": 257,
+      "y": 320,
+      "h": 31,
+      "top": 290,
+      "bottom": 320,
+      "wpx": 31,
+      "quad": 31,
+      "worldX": 12.5,
+      "worldZ": 26.5,
+      "shown": true
+    },
+    {
+      "x": 874,
+      "y": 212,
+      "h": 28,
+      "top": 184,
+      "bottom": 212,
+      "wpx": 28,
+      "quad": 28,
+      "worldX": 26.5,
+      "worldZ": 22.5,
+      "shown": true
+    }
+  ],
+  "blocked": {
+    "blocked": 10,
+    "walkable": 441,
+    "offIsland": 0,
+    "total": 441,
+    "pct": 2.3
+  },
+  "walk": {
+    "real": 2.67,
+    "walked": 2.7,
+    "errorPct": 1.1
+  },
+  "battleState": {
+    "mode": "battle",
+    "renderScale": 2,
+    "buffer": [
+      640,
+      360
+    ],
+    "pos": [
+      20.5,
+      0.79,
+      25.83
+    ],
+    "tile": "stone",
+    "zone": "stone",
+    "propCount": 192,
+    "walked": 2.7,
+    "asking": true,
+    "draining": false,
+    "queued": 0,
+    "promptOpen": true,
+    "promptRows": [
+      "Attack",
+      "Ember Slash",
+      "Guard Up",
+      "Boost",
+      "Guard"
+    ],
+    "promptSel": 0,
+    "camera": [
+      20.5,
+      17.42,
+      45.07
+    ],
+    "fov": 30.058209257517593,
+    "battle": {
+      "state": "command",
+      "round": 1,
+      "result": null
+    },
+    "sceneChildren": 10
+  },
+  "prompt": {
+    "hidden": false,
+    "cls": "bt-prompt",
+    "title": "Olrik",
+    "rows": [
+      {
+        "cls": "bt-row is-sel",
+        "text": "Attacksword"
+      },
+      {
+        "cls": "bt-row",
+        "text": "Ember Slash4 MP \u00b7 fire"
+      },
+      {
+        "cls": "bt-row",
+        "text": "Guard Up3 MP \u00b7 buff"
+      },
+      {
+        "cls": "bt-row",
+        "text": "Boostmend 10% / turn"
+      },
+      {
+        "cls": "bt-row",
+        "text": "Guardhalve damage"
+      }
+    ]
+  },
+  "battleSprites": [
+    {
+      "x": -663,
+      "y": 1093,
+      "h": 474,
+      "top": 619,
+      "bottom": 1093,
+      "wpx": 474,
+      "quad": 474,
+      "worldX": 121.59,
+      "worldZ": 112.73,
+      "shown": true
+    },
+    {
+      "x": 559,
+      "y": 433,
+      "h": 88,
+      "top": 345,
+      "bottom": 433,
+      "wpx": 67,
+      "quad": 101,
+      "worldX": 19.25,
+      "worldZ": 26.73,
+      "shown": true
+    },
+    {
+      "x": 482,
+      "y": 466,
+      "h": 90,
+      "top": 376,
+      "bottom": 466,
+      "wpx": 79,
+      "quad": 90,
+      "worldX": 18.1,
+      "worldZ": 27.53,
+      "shown": true
+    },
+    {
+      "x": 627,
+      "y": 465,
+      "h": 90,
+      "top": 375,
+      "bottom": 465,
+      "wpx": 71,
+      "quad": 90,
+      "worldX": 20.4,
+      "worldZ": 27.53,
+      "shown": true
+    },
+    {
+      "x": 559,
+      "y": 520,
+      "h": 94,
+      "top": 426,
+      "bottom": 520,
+      "wpx": 70,
+      "quad": 94,
+      "worldX": 19.25,
+      "worldZ": 28.78,
+      "shown": true
+    },
+    {
+      "x": 644,
+      "y": 606,
+      "h": 45,
+      "top": 561,
+      "bottom": 606,
+      "wpx": 45,
+      "quad": 45,
+      "worldX": 20.5,
+      "worldZ": 31.5,
+      "shown": false
+    },
+    {
+      "x": 420,
+      "y": 368,
+      "h": 39,
+      "top": 330,
+      "bottom": 368,
+      "wpx": 39,
+      "quad": 39,
+      "worldX": 16.5,
+      "worldZ": 26.5,
+      "shown": false
+    },
+    {
+      "x": 200,
+      "y": 377,
+      "h": 37,
+      "top": 340,
+      "bottom": 377,
+      "wpx": 37,
+      "quad": 37,
+      "worldX": 12.5,
+      "worldZ": 26.5,
+      "shown": false
+    },
+    {
+      "x": 940,
+      "y": 242,
+      "h": 34,
+      "top": 208,
+      "bottom": 242,
+      "wpx": 34,
+      "quad": 34,
+      "worldX": 26.5,
+      "worldZ": 22.5,
+      "shown": false
+    },
+    {
+      "x": 636,
+      "y": 245,
+      "h": 96,
+      "top": 149,
+      "bottom": 245,
+      "wpx": 48,
+      "quad": 96,
+      "worldX": 20.5,
+      "worldZ": 22.83,
+      "shown": true
+    }
+  ],
+  "afterBattle": {
+    "mode": "overworld",
+    "sprites": 10,
+    "battle": {
+      "state": "command",
+      "round": 1,
+      "result": null
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,85 @@
+/* src/battle/battle.css — the battle command panel and the damage numbers.
+ *
+ * src/style.css belongs to AGENT-UI and AGENT-FIX-A may not edit it, so the
+ * battle layer carries its own block. Same hard rule as the rest of the UI: the
+ * framebuffer is upscaled from ~1/2 resolution, so anything that depends on a
+ * soft edge (blur, backdrop-filter, box-shadow, structural gradients) reads as
+ * cheap and broken. Opaque blocks, hard 1-3px borders, stepped motion.
+ *
+ * Nothing here is a structural gradient and nothing is translucent.
+ */
+
+/* Anchored RIGHT, not centred. The command prompt is ~200px tall and the party
+   diamond is staged 0.4-1.9 world units NEARER the camera than the anchor
+   (battle/stage.js battleStage), so a centred panel sat on the front rank's
+   feet: measured on 1280x720, the two near members were 30-40% hidden. The
+   right third of the frame is empty in every battle screenshot, and Octopath
+   puts its command list there too. */
+.bt-prompt {
+  position: absolute;
+  right: 26px;
+  bottom: 26px;
+  min-width: 400px;
+  max-width: 46vw;
+  padding: 3px;
+  z-index: 30;
+  pointer-events: none;
+  font-family: var(--ui-font);
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--paper);
+  background: var(--panel);
+  border: 2px solid var(--edge);
+}
+
+.bt-prompt[hidden] { display: none; }
+
+.bt-title {
+  padding: 2px 8px 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--edge);
+}
+
+.bt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--paper);
+  background: var(--row);
+  border: 1px solid var(--edge);
+  cursor: default;
+}
+.bt-row.is-sel {
+  color: var(--ink);
+  background: var(--gold);
+  border-color: var(--gold-hi);
+}
+
+.bt-name { width: auto; }
+
+/* the right-hand column: MP cost, element, the weakness read-out */
+.bt-sub { margin-left: auto; text-align: right; color: var(--dim); }
+.bt-row.is-sel .bt-sub { color: #3a2f14; }
+
+/* Damage numbers. Position / scale / opacity are written per frame by the tween,
+   so only the fixed look lives here. The 2px text-shadow is a hard offset, not a
+   blur — it is what keeps the number readable against a light sprite. */
+.bt-pop {
+  position: absolute;
+  font-family: var(--ui-font);
+  font-weight: 700;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 40;
+  opacity: 0;
+  text-shadow:
+    2px 2px 0 var(--ink), -2px -2px 0 var(--ink),
+    2px -2px 0 var(--ink), -2px 2px 0 var(--ink);
+}

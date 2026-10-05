@@ -1,0 +1,9 @@
+{
+  "pine":      { "geometry": "cone",    "color": "#2e5b34", "color2": "#24492a", "height": 2.4,  "radius": 0.55, "collider": 0.25, "solid": true, "tiles": ["grass", "moss"] },
+  "rock":      { "geometry": "rock",    "color": "#7d7a85", "color2": "#5f5c66", "height": 0.7,  "radius": 0.5,  "collider": 0.45, "solid": true, "tiles": ["stone", "grass", "sand"] },
+  "ruin":      { "geometry": "box",     "color": "#b8b2a4", "color2": "#8d8879", "height": 1.8,  "radius": 0.45, "collider": 0.45, "solid": true, "tiles": ["stone", "sand"] },
+  "pillar":    { "geometry": "pillar",  "color": "#a9a49a", "color2": "#837e75", "height": 2.6,  "radius": 0.4,  "collider": 0.4,  "solid": true, "tiles": ["stone", "sand"] },
+  "grassTuft": { "geometry": "tuft",    "color": "#5f8f47", "color2": "#436a34", "height": 0.35, "radius": 0.2,  "solid": false, "tiles": ["grass", "moss"] },
+  "crystal":   { "geometry": "crystal", "color": "#7fd6e8", "color2": "#4aa6c0", "height": 1.1,  "radius": 0.3,  "solid": false, "tiles": ["stone", "moss"] },
+  "flower":    { "geometry": "tuft",    "color": "#e8d06a", "color2": "#c8a83f", "height": 0.3,  "radius": 0.18, "solid": false, "tiles": ["grass"] }
+}

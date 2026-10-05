@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.vite/
+*.log
+.DS_Store
+
+# Python bytecode from the headless QA passes. Regenerated on every run and
+# worthless in history; the passes are in tests/*.py.
+__pycache__/
+*.pyc

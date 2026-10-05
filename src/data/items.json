@@ -1,0 +1,5 @@
+{
+  "tonic":          { "name": "Field Tonic",      "kind": "heal",   "power": 40, "target": "ally", "price": 30 },
+  "ether":          { "name": "Ether Draught",    "kind": "mp",     "power": 15, "target": "ally", "price": 45 },
+  "phoenix_bloom":  { "name": "Phoenix Bloom",    "kind": "revive", "power": 30, "target": "ally", "price": 120 }
+}
