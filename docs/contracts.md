@@ -1,5 +1,21 @@
 # Module Contracts — HD-2D RPG
 
+> **Historical.** This file froze the interfaces so six agents could build the
+> first slice in parallel, and it is kept for that record. Several of its numbers
+> no longer describe the game:
+>
+> - the map is **64×64**, not the 40×40 default in the signature below (game.js
+>   passes the size; the default is unchanged)
+> - the follow chain is a **wedge anchored to the leader's facing**, not the
+>   trailing-perpendicular chain described in §party
+> - the party formation, the terrain terrace, the starting village, the Italian UI
+>   and the start screen are all described in [`design.md`](./design.md)
+> - the content layer is now `tiles / props / actors / enemies / skills / items /
+>   level1 / village / info`, all under `src/data/`
+>
+> Read `design.md` for how the game actually works today. Read this for what each
+> module was asked to expose when it was written.
+
 **This file is the interface between parallel agents. Do not change a signature that another module owns.**
 If you truly need a change, add an optional field and document it in your own module header.
 

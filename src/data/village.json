@@ -1,0 +1,30 @@
+{
+  "name": "La Riva",
+
+  "layout": [
+    { "id": "house_inn",   "type": "house",  "x": -2.6, "z": -2.2, "w": 3.2, "d": 2.6, "h": 2.0, "wall": "#c9b79a", "roof": "#8a4b3a", "door": [1, 0.35] },
+    { "id": "house_a",     "type": "house",  "x": 2.4,  "z": -2.6, "w": 2.6, "d": 2.4, "h": 1.8, "wall": "#bdae94", "roof": "#6f6a8c", "door": [-1, 0.3] },
+    { "id": "house_b",     "type": "house",  "x": -2.9, "z": 1.9,  "w": 2.4, "d": 2.2, "h": 1.7, "wall": "#cbbfa4", "roof": "#7a5a3e", "door": [1, 0.3] },
+    { "id": "store",       "type": "house",  "x": 2.7,  "z": 2.1,  "w": 2.8, "d": 2.2, "h": 1.9, "wall": "#b6a98f", "roof": "#5f7a52", "door": [-1, 0.3] },
+    { "id": "well",        "type": "well",   "x": 0,    "z": -0.1,  "r": 0.55, "h": 0.9 },
+    { "id": "signpost",    "type": "sign",   "x": 0.0,  "z": 3.2,   "h": 1.3 },
+    { "id": "lantern_w",   "type": "lantern","x": -4.1, "z": 0.1,   "h": 2.0 },
+    { "id": "lantern_e",   "type": "lantern","x": 4.0,  "z": 0.2,   "h": 2.0 },
+    { "id": "fence_n",     "type": "fence",  "x": 0,    "z": -4.4,  "len": 9.0, "axis": "x" },
+    { "id": "fence_w",     "type": "fence",  "x": -4.9, "z": -1.0,  "len": 6.0, "axis": "z" },
+    { "id": "fence_e",     "type": "fence",  "x": 4.9,  "z": -1.2,  "len": 5.4, "axis": "z" }
+  ],
+
+  "anchors": [
+    { "id": "elder", "x": 0.4, "z": 3.6, "facing": "down", "speaker": "Nerio il Guardiano" },
+    { "id": "child", "x": -4.0, "z": -1.4, "facing": "right", "speaker": "Bimba" },
+    { "id": "smith", "x": 3.2, "z": 0.2, "facing": "left", "speaker": "Fabbro Ivo" }
+  ],
+
+  "palette": {
+    "door": "#4a3325",
+    "trim": "#3b2d20",
+    "stone": "#8f8a80",
+    "crate": "#7a5c3a"
+  }
+}

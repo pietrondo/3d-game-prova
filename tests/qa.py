@@ -18,6 +18,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 import qa_server
+import qa_drive
 
 ROOT = Path(__file__).resolve().parent.parent
 DIST = ROOT / "dist"
@@ -47,33 +48,11 @@ def wait_boot(page):
     page.wait_for_timeout(700)
 
 
-def tap(page, key, hold=60, settle=340):
-    """A keystroke the input layer can actually see.
-
-    core/input.js builds its press EDGE inside update() as (held - prev), so
-    page.keyboard.press() — a down and an up a millisecond apart — is dropped
-    whenever no frame lands between them. Every tap in this pass must be
-    down / wait / up.
-    """
-    page.keyboard.down(key)
-    page.wait_for_timeout(hold)
-    page.keyboard.up(key)
-    page.wait_for_timeout(settle)
-
-
-def skip_dialogue(page, limit=40):
-    """Close whatever is open at boot.
-
-    A fresh game now opens with the area intro AND the first stage's lines
-    (level1.json), because `speakStage()` is chained off the intro's promise.
-    That is five lines, each needing two presses. Without this, every later
-    measurement in the pass reads a game that is still talking, and BUG 7
-    reports `real: 0.0` for a walk that never happened.
-    """
-    for _ in range(limit):
-        if page.evaluate("() => window.__hd2d.state.mode") != "dialogue":
-            return
-        tap(page, "KeyE", hold=50, settle=90)
+# tap / dismiss / start_new_game live in qa_drive.py: both headless passes need
+# them, and the reasons they are written the way they are are worth stating once.
+tap = qa_drive.tap
+skip_dialogue = qa_drive.dismiss
+start_new_game = qa_drive.start_new_game
 
 
 def shot(page, name, settle=0):
@@ -129,20 +108,55 @@ def block_stats(path, size=220):
     }
 
 
-def sprite_boxes(page):
-    """Screen-space box of every sprite in the scene, party and enemies alike.
+def settle_party(page, timeout=1500, interval=120):
+    """Wait for the follow chain to reach its formation slots.
+
+    A teleport moves the leader instantly; the followers are still walking to
+    their new slots, so a measurement taken in the same frame sees a stack that
+    is about to resolve and files it as an overlap regression. Poll the members'
+    world positions and return as soon as two consecutive samples agree.
+
+    Bounded at ~1.5s and always polled with the browser, never a blind sleep:
+    if the party genuinely stalls, the measurement still runs on what is on
+    screen instead of hiding the stall behind a longer wait.
+    """
+    prev = None
+    waited = 0
+    while waited < timeout:
+        now = page.evaluate(
+            "() => window.__hd2d.party.members.map((m) => "
+            "[+m.position.x.toFixed(3), +m.position.z.toFixed(3)])"
+        )
+        if prev is not None and now == prev:
+            return waited
+        prev = now
+        page.wait_for_timeout(interval)
+        waited += interval
+    return waited
+
+
+def sprite_boxes(page, party_only=False):
+    """Screen-space box of sprites in the scene.
 
     Read off the world matrix, because a sprite's local position is relative to
     its own group and reading it directly puts every party member at (0,0).
+
+    With `party_only`, only the PLAYER PARTY is kept. The scene also carries the
+    six talking markers, which are not party members; counting them turned a
+    settled, well-spread party into a 64% "overlap" no sprite ever drew.
     """
     return page.evaluate(
-        """() => {
+        """([partyOnly]) => {
       const H = window.__hd2d, THREE = H.THREE;
       const cam = H.engine.camera, w = H.engine.width, hh = H.engine.height;
       const v = new THREE.Vector3();
       const out = [];
       H.scene.traverse((o) => {
         if (!o.isSprite || !o.material.map) return;
+        // actor.js puts the Sprite (and its shadow Mesh) INSIDE the member's
+        // Object3D, so the party test looks at the parent of the sprite, not at
+        // the sprite itself. The marker talk-sprites have no such parent.
+        if (partyOnly && !H.party.members.some((m) => m.object3D === o.parent)) return;
         o.getWorldPosition(v);
         const centre = v.clone();
         centre.y += o.scale.y * (0.5 - o.center.y);   // centre.y is 0: feet at origin
@@ -174,12 +188,18 @@ def sprite_boxes(page):
         });
       });
       return out;
-    }"""
+    }""",
+        [party_only],
     )
 
 
 def blocked_fraction(page, radius=3.0, step=0.25):
-    """Sample a disc around the leader and report how much is impassable."""
+    """Sample a disc around the leader and report how much is impassable.
+
+    This is a WILDERNESS measurement: the documented target (<25%) is about the
+    open island. Stand the leader inside the starting village and the same maths
+    counts houses and fences that are obstacles BY DESIGN.
+    """
     return page.evaluate(
         """([radius, step]) => {
       const H = window.__hd2d;
@@ -206,6 +226,36 @@ def blocked_fraction(page, radius=3.0, step=0.25):
     )
 
 
+def wilderness_spot(page, step=1.0, limit=64, margin=3.0):
+    """Teleport the leader outside the village, onto walkable wilderness.
+
+    Walk outward from `window.__hd2d.village.centre` along +x, then -x, and take
+    the first point that is walkable and NOT inside the village. The whole
+    sampling disc (radius = `margin`) must be out too: a disc straddling the
+    village wall would measure the wall, which is the mistake being fixed.
+    """
+    return page.evaluate(
+        """([step, limit, margin]) => {
+      const H = window.__hd2d, c = H.village.centre;
+      const clear = (x, z) =>
+        !H.inVillage(x, z) &&
+        !H.inVillage(x + margin, z) && !H.inVillage(x - margin, z) &&
+        !H.inVillage(x, z + margin) && !H.inVillage(x, z - margin);
+      for (let i = 1; i <= limit; i++) {
+        for (const dir of [1, -1]) {
+          const x = c.x + dir * i * step, z = c.z;
+          if (clear(x, z) && H.walkable(x, z)) {
+            H.teleport(x, z);
+            return { x: +x.toFixed(2), z: +z.toFixed(2), steps: i, dir };
+          }
+        }
+      }
+      return { error: 'no wilderness spot found' };
+    }""",
+        [step, limit, margin],
+    )
+
+
 def main():
     if not (DIST / "index.html").exists():
         sys.exit("dist/ missing — run `npm run build` first")
@@ -224,23 +274,20 @@ def main():
         # domcontentloaded + the handle is the real readiness signal.
         page.goto(f"http://127.0.0.1:{port}/index.html", wait_until="domcontentloaded", timeout=30000)
         wait_boot(page)
-        # A fresh game opens with the area intro. This pass measures rendering,
-        # not prose, so it closes it before the first screenshot.
+        # Deterministic boot: wipe any slot the previous run left, reload, then
+        # drive the title into a NEW game. This pass measures rendering, not
+        # prose, so it clears the opening monologue before the first screenshot.
         page.evaluate("() => window.localStorage.clear()")
         page.reload(wait_until="domcontentloaded", timeout=30000)
         wait_boot(page)
-        # The intro is a promise chain: `speakStage()` for stage 1 runs in the
-        # `.then()` AFTER the intro's last line closes, so a `skip_dialogue` that
-        # only watches `mode` stops one beat early and leaves the briefing open.
-        # Drain until the world is quiet for two consecutive reads.
-        for _ in range(6):
-            skip_dialogue(page)
-            page.wait_for_timeout(250)
-            if page.evaluate("() => window.__hd2d.state.mode") == "overworld":
-                break
+        started = start_new_game(page)
+        print(f"  new game started: {started}")
+        if not started:
+            print("  WARNING: could not get past the title")
+        # Stand at the village centre so the walk measurement below is a real
+        # walk on the terrace and not a first step into a fence.
+        page.evaluate("() => window.__hd2d.teleport(window.__hd2d.village.centre.x, window.__hd2d.village.centre.z + 2)")
         page.wait_for_timeout(400)
-        page.evaluate("() => window.__hd2d.teleport(20.5, 28.5)")
-        page.wait_for_timeout(300)
 
         print("\n== overworld ==")
         state = page.evaluate(PAGE)
@@ -263,7 +310,11 @@ def main():
 
         # BUG 6 / BUG 10 — party overlap
         print("\n== BUG 6/10: party sprite spread ==")
-        sprites = sprite_boxes(page)
+        # The leader was teleported a moment ago, so the follow chain is still
+        # walking into its slots; three stacked-in-transit members are not a
+        # regression, so measure only once they have stopped moving.
+        settle_party(page)
+        sprites = sprite_boxes(page, party_only=True)
         for s in sprites:
             print(f"  sprite h={s['h']:4d}px w={s['wpx']:3d}px at ({s['x']},{s['top']}) "
                   f"world=({s['worldX']},{s['worldZ']}) shown={s['shown']}")
@@ -285,12 +336,38 @@ def main():
         findings["partySprites"] = sprites
         shot(page, "03-party")
 
-        # BUG 8 — blocked ground
-        print("\n== BUG 8: impassable ground ==")
+        # BUG 8 — blocked ground. The target (<25%) is a WILDERNESS reading, so
+        # the two numbers below are measured in the two different places and
+        # only the wilderness one is compared against it.
+        print("\n== BUG 8: impassable ground (wilderness) ==")
+        village = blocked_fraction(page)
+        village["pct"] = round(100 * village["blocked"] / max(1, village["walkable"]), 1)
+        print("  village (INFORMATIONAL ONLY — houses and fences are obstacles by "
+              "design here, so this is not read against 25%):")
+        print("   ", json.dumps(village))
+        findings["blockedVillage"] = village
+
+        wild = wilderness_spot(page)
+        print("  wilderness spot:", json.dumps(wild))
+        if "x" in wild:
+            # bounded poll: a teleport is synchronous, so this returns at once
+            # in the happy case and costs 3s only if the leader is frozen.
+            page.wait_for_function(
+                "([x, z]) => { const p = window.__hd2d.leaderPos();"
+                " return Math.hypot(p[0] - x, p[1] - z) < 0.05; }",
+                arg=[wild["x"], wild["z"]],
+                timeout=3000,
+            )
         b = blocked_fraction(page)
+        b["where"] = "wilderness"
         b["pct"] = round(100 * b["blocked"] / max(1, b["walkable"]), 1)
-        print("  ", json.dumps(b))
+        print("  wilderness:", json.dumps(b), f"(target < 25%)")
         findings["blocked"] = b
+
+        # Back to the terrace: BUG 7 below is a walk test and wants the clear
+        # ground it was written against, the same spot the run started from.
+        page.evaluate("() => window.__hd2d.teleport(window.__hd2d.village.centre.x, window.__hd2d.village.centre.z + 2)")
+        page.wait_for_timeout(400)
 
         # BUG 7 — walked vs real displacement. Real key events, real input.js.
         print("\n== BUG 7: walked counter ==")

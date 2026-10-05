@@ -18,6 +18,7 @@
  */
 
 import { multiplier } from '../combat/weaknesses.js';
+import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, tr } from '../core/terms.js';
 
 /** @param {string} tag @param {*} text @param {string} [cls] */
 export const el = (tag, text, cls) => {
@@ -90,12 +91,12 @@ function bestAgainst(actor, foe, skills) {
   const actions = [{ weaponType: actor.weaponType, element: null },
     ...actor.skills.map((id) => skills[id]).filter(Boolean)];
   let best = 1;
-  let label = '';
+  let bestName = '';
   for (const a of actions) {
     const m = multiplier(actor, foe, a);
-    if (m > best) { best = m; label = a.name || a.element || 'hit'; }
+    if (m > best) { best = m; bestName = a.name || a.element || 'colpo'; }
   }
-  return best > 1 ? `${label} x${best}` : 'resists';
+  return best > 1 ? `${bestName} x${best}` : 'resiste';
 }
 
 /**
@@ -137,19 +138,21 @@ export function createCommander({ prompt, skills, rng, chooseEnemyCommand, bag =
     const known = ally.skills.map((id) => ({ id, def: skills[id] })).filter((s) => s.def);
     const carried = usableItems(battle);
     const pick = await prompt.choose(ally.name, [
-      { label: 'Attack', sub: ally.weaponType, value: { type: 'attack', def: null } },
+      { label: 'Attacco', sub: ally.weaponType, value: { type: 'attack', def: null } },
       ...known.map((s) => ({
         label: s.def.name,
-        sub: s.def.mp ? `${s.def.mp} MP · ${s.def.element || s.def.kind}` : String(s.def.kind),
+        sub: s.def.mp
+          ? `${s.def.mp} PM · ${tr(ELEMENT_IT, s.def.element, tr(SKILL_KIND_IT, s.def.kind))}`
+          : tr(SKILL_KIND_IT, s.def.kind),
         value: { type: 'skill', def: s.def, actionId: s.id },
       })),
       ...carried.map(({ id, count, def }) => ({
         label: def.name,
-        sub: `${def.kind} · x${count}`,
+        sub: `${tr(ITEM_KIND_IT, def.kind)} · x${count}`,
         value: { type: 'item', def, itemId: id },
       })),
-      { label: 'Boost', sub: 'mend 10% / turn', value: { type: 'boost', def: null } },
-      { label: 'Guard', sub: 'halve damage', value: { type: 'defend', def: null } },
+      { label: 'Potenziamento', sub: 'cura 10% per turno', value: { type: 'boost', def: null } },
+      { label: 'Guardia', sub: 'dimezza i danni', value: { type: 'defend', def: null } },
     ]);
     if (!pick) return bail(ally);
     if (pick.type === 'boost' || pick.type === 'defend' || pick.def?.target === 'self') {
@@ -163,11 +166,11 @@ export function createCommander({ prompt, skills, rng, chooseEnemyCommand, bag =
     const pool = pick.type === 'item' && pick.def?.kind === 'revive' ? downed
       : pick.def?.target === 'ally' ? battle.living('ally') : foes;
     if (!pool.length) return bail(ally);
-    const t = await prompt.choose(`${ally.name} — target`, pool.map((c) => ({
+    const t = await prompt.choose(`${ally.name} — bersaglio`, pool.map((c) => ({
       label: c.name,
       sub: c.side === 'enemy' ? bestAgainst(ally, c, skills)
-        : c.currentHP <= 0 ? 'DOWN · revive'
-          : `${c.currentHP}/${c.maxHP} HP`,
+        : c.currentHP <= 0 ? 'A TERRA · rianima'
+          : `${c.currentHP}/${c.maxHP} PV`,
       value: c,
     })));
     if (!t) return bail(ally);

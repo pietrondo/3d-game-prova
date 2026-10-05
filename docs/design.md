@@ -44,10 +44,55 @@ in the final shader only.
 - Heightmap from seeded value-noise fBm shaped by a radial falloff → an island slab
   that reads as a diorama. Greedy-meshed per chunk into `BufferGeometry` with
   per-vertex colour driven by tile type and local slope.
+- **64×64, not 40×40.** The island IS the map size — the falloff is radial, so
+  enlarging it makes the island bigger rather than the view — and at 40 the whole
+  game happened inside a 27-unit disc, which is a clearing, not a place.
+- **One terrace, because the island has no flat ground.** Measured on the 64×64
+  island: only 33.9% of cells are walkable and exactly ONE radius-6 disc has relief
+  under 0.6 — the mesa top. A village needs flat ground, so the ground is prepared:
+  `createTerrain({ shelf })` carves a level terrace, addressed in NORMALISED terms
+  (a direction from the island centre and a fraction of the island radius) so it
+  follows the island when the size or the seed changes instead of ending up in the
+  sea. The terrace level is the disc MEAN of the natural height, not a constant — a
+  fixed Y floats on one seed and sinks into the water on the next.
+- The starting village, `La Riva`, is built on that terrace by `world/village.js`
+  from `data/village.json`. It is not a scatter of props: it has a fixed layout, a
+  name, solid buildings, and a safe radius inside which the wilderness does not roll
+  encounters.
 - Blocky low-poly props (`BoxGeometry`, 5-sided cones/cylinders, icosahedra), merged
   per type to keep draw calls low.
-- `src/data/tiles.json` and `src/data/props.json` are the content layer. New biomes,
-  props, enemies and skills are JSON edits, never code changes.
+- `src/data/tiles.json`, `props.json`, `village.json` and `level1.json` are the
+  content layer. New biomes, props, buildings, enemies and skills are JSON edits,
+  never code changes.
+
+## Language
+
+The game is **Italian**. Code comments and identifiers are English, as they are
+throughout the project. The seam between the two is `src/core/terms.js`: `element`,
+`kind` and `weaponType` are DATA KEYS that the combat layer switches on
+(`weaknesses.js` reads `element`, `battle.js` reads `kind`) and must never be
+translated, while the UI has to print "fuoco" for `fire`. The maps live in one file
+because that is exactly the duplication that drifts.
+
+There is no i18n layer, on purpose: one language, and a lookup table with no second
+case to justify it is indirection. If a second language is ever needed, the strings
+are already clustered in the files that render them.
+
+## Start screen
+
+`ui/title.js` is the title: **Nuova partita / Continua / Salva / Informazioni**. It
+exists for two reasons that a boot-straight-into-the-world cannot serve. A returning
+player gets no chance to say "not that" before the intro plays, and a first-time
+player never learns what the game is before being asked to move. It is also the only
+honest home for a Load action — loading mid-game is a restart wearing a hat, so it
+belongs where restarts belong.
+
+Disabled rows are SKIPPED by the cursor, not shown-and-refused: `Continua` with no
+save and `Salva` with no session are real states, and a row you can land on and
+confirm into nothing is a broken row.
+
+`Informazioni` is content: `data/info.json`.
+
 
 ## Combat
 
@@ -75,14 +120,14 @@ party a beat before a random encounter triggers.**
 ```
 src/
   core/    engine.js  pixelPass.js  input.js  tween.js
-           inventory.js  level.js  save.js
-  world/   noise.js  terrain.js  props.js  sky.js
+           inventory.js  level.js  save.js  terms.js
+  world/   noise.js  terrain.js  props.js  sky.js  village.js
   actors/  spriteFactory.js  actor.js  party.js
   combat/  weaknesses.js  damage.js  turnOrder.js  ai.js  battle.js
   battle/  stage.js  commands.js  battle.css
-  ui/      hud.js  dialogue.js  menu.js
+  ui/      hud.js  dialogue.js  menu.js  title.js
   data/    tiles.json  props.json  actors.json  enemies.json  skills.json
-           items.json  level1.json
+           items.json  level1.json  village.json  info.json
   game.js  main.js
 ```
 
@@ -94,8 +139,9 @@ talking to each other.
 
 `vitest` on the pure logic only: noise determinism, multiplier resolution order, damage
 (crit + immune branches), timeline ordering, dead-skipping, `Ease` monotonicity, battle
-turn progression, boost break, the inventory and the level machine. The renderer is not
-unit-tested — QA reviews it by screenshot and console output.
+turn progression, boost break, the inventory, the level machine, the terrain terrace
+and the village. The renderer is not unit-tested — QA reviews it by screenshot and
+console output.
 
 **`npm test` cannot see missing wiring.** Every module above is individually
 correct and unit-testable, and the game still had no reachable items, no gold and
@@ -104,20 +150,33 @@ headless passes cover what unit tests structurally cannot:
 
 | pass | asserts |
 |---|---|
-| `python tests/qa.py` | pixels: chunkiness, party spread, blocked ground, the walked counter, the battle sprites, a driven fight |
-| `python tests/qa-level.py` | progression: intro, stage order, the bag, the cache, the save round-trip |
+| `python tests/qa.py` | pixels: chunkiness, party spread, wilderness blocked ground, the walked counter, the battle sprites, a driven fight |
+| `python tests/qa-level.py` | the title screen, intro, stage order, the village, the bag, the cache, the save round-trip, the info panel |
 
 `qa-level.py` exists because of that failure class specifically. It drives the
-real game and reads `window.__hd2d.level` and `window.__hd2d.bag`, which are
+real game and reads `window.__hd2d.level`, `.bag` and `.village`, which are
 questions no screenshot answers.
 
-Both passes share `tests/qa_server.py` and both use `tap()` rather than
-`keyboard.press()`. `core/input.js` builds a press edge inside `update()` as
-`(held - prev)`, so a down and an up a millisecond apart produce **no edge at
-all** whenever no frame lands between them. A harness using `press()` hangs
-forever waiting for a battle that is progressing perfectly, and it is
-indistinguishable from a wedged game. That cost this session an hour of
-chasing a bug that was in the ruler.
+Both passes share `tests/qa_server.py` and `tests/qa_drive.py`, and all synthetic
+keys go through `tap()` rather than `keyboard.press()`. `core/input.js` builds a
+press edge inside `update()` as `(held - prev)`, so a down and an up a millisecond
+apart produce **no edge at all** whenever no frame lands between them. A harness
+using `press()` hangs forever waiting for a battle that is progressing perfectly,
+and it is indistinguishable from a wedged game. That mistake has now been made
+twice, in two different harnesses, and each time cost an hour of chasing a bug
+that was in the ruler.
+
+Two more measurement rules, both of which produced a false report before they were
+written down:
+
+- **Measure the settled state, not the transient.** The party spawns as a wedge and
+  the followers need a moment to reach their slots; sampling during the walk reports
+  a "blob" that does not exist. `settle_party()` waits for the members to stop moving.
+- **Measure the drawing, not its container, and only the sprites you mean.** The
+  party overlap counts party members only (markers are sprites too), and it uses the
+  alpha-measured ink box rather than the square quad. A quad box is mostly
+  transparent padding; measuring it once reported 52% for a party that read fine.
+
 
 ## Out of scope
 
@@ -150,3 +209,48 @@ the marker permanently, making the area impossible to finish. All three are now
 covered by `tests/qa-level.py`, which drives the real game and asserts
 progression — a class of bug `npm test` cannot see, because the logic is pure and
 the wiring is not.
+
+## The village that was in the sea
+
+`world/village.js` built every piece in village-local coordinates (offsets from
+the centre, as `village.json` gives them) and **never translated the result onto
+the terrace**. The merged mesh was a perfectly good village, 648 triangles,
+`visible: true`, sitting at the world origin — which on a 64×64 island is open
+water at the map corner. The colliders WERE offset correctly, so the player walked
+into an invisible village.
+
+Nothing threw. The scene had a mesh with the right name and the right colour
+attribute. `npm test` had nothing to say, because the module had no test. The
+pixel QA pass screenshotted the overworld and the village simply was not in frame.
+It was caught by looking at the picture and asking "where is the village?", which
+is the one check that reading the code cannot replace.
+
+The fix translates each piece's geometry by its own world position, so the
+colliders and the drawing are derived from the SAME `wx`/`wz` and can no longer
+disagree. The per-piece Y comes from `terrain.heightAt` — deliberately NOT a
+recreated terrace formula, because the terrace is
+`lerp(naturalHeight, meanY, w)` and the natural height comes from noise, so it
+cannot be recomputed from the shelf alone.
+
+## The spawn that trapped a follower
+
+Fixing the village exposed a second bug that the trade press would call a design
+flaw and an engineer should call an invariant violation: the party does not spawn
+as a point, it spawns as a **wedge**, and `clearSpot` only ever cleared the
+LEADER. The old spawn put the leader at (31.5, 47.76) with the signpost collider at
+(31.5, 47.93), so the tail's slot was behind an obstacle. `actor.js` collides by
+sliding, so the tail pressed into the post forever, the formation never closed, and
+it sat permanently on top of the leader — measured as a 66% overlap.
+
+The invariant is: **a spawn must clear the party's own footprint, not just its
+centre.** The village is the only thing that knows its own obstacles, so the village
+now picks the spot, searching outward from the terrace centre for the first point
+whose disc is clear of every collider it built.
+
+Worth stating plainly: the pixel pass had reported the overlap as a *false*
+regression and the plan was to make the measurement smarter. Making it smarter — 
+waiting for the formation to settle instead of sampling mid-walk — turned a noisy
+number into a stable one, and the stable number showed the formation was genuinely
+stuck. The measurement was never the problem. The ruler was fine; it was measuring
+something real that nobody had looked at.
+

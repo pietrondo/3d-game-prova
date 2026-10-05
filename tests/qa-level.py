@@ -1,22 +1,27 @@
 """
-qa-level.py — headless check of level progression, the bag, and the save slot.
+qa-level.py — headless check of the title screen, level progression, the bag,
+the village and the save slot.
 
-Written because the two worst bugs of this session were SILENT: the level machine
-started at index -1 and never moved, and the game promised 3 Field Tonics while
-giving the player nothing. Neither threw. Neither was visible in a screenshot of
-the overworld. Both are only visible by driving the real game and reading state.
+Written because the worst bugs of this project were SILENT. The level machine
+started at index -1 and never advanced; the game promised 3 tonici and gave the
+player nothing; the title screen did not disappear on "Nuova partita" because a
+CSS `display` beat the browser's `[hidden]`. None of the three threw. None was
+visible in a screenshot of the overworld. All three are only visible by driving
+the real game and reading state, which is what this pass does.
 
-Unlike tests/qa.py this does not take screenshots or measure pixels; it asserts
-progression. Run after `npm run build`:
+Run after `npm run build`:
 
     python tests/qa-level.py
 """
 
-import json
 import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import qa_server
+import qa_drive
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -24,12 +29,21 @@ PAGE = """
 async () => {
   const H = window.__hd2d;
   if (!H) return { error: 'no __hd2d handle' };
-  return { ...H.state, level: H.level, bag: H.bag };
+  return { ...H.state, level: H.level, bag: H.bag, village: H.village };
 }
 """
 
+# Is the start panel ACTUALLY gone? `hidden` is not enough to ask: an author
+# `display` rule overrides the UA `[hidden]` rule, so the attribute can be true
+# while the panel is still on screen. This reads the computed style.
+TITLE_VISIBLE = """() => {
+  const t = document.querySelector('.title');
+  if (!t) return false;
+  const cs = getComputedStyle(t);
+  return cs.display !== 'none' && cs.visibility !== 'hidden' && t.getBoundingClientRect().height > 0;
+}"""
+
 failures = []
-notes = []
 
 
 def check(name, ok, detail=""):
@@ -38,57 +52,9 @@ def check(name, ok, detail=""):
         failures.append(f"{name}: {detail}")
 
 
-def clear_save(page):
-    page.evaluate("() => window.localStorage.clear()")
-
-
-def boot(page):
-    page.wait_for_function("() => !!window.__hd2d", timeout=20000)
-    page.wait_for_timeout(600)
-
-
-def tap(page, key="Enter", hold=60, settle=340):
-    """Press a key the way a HUMAN does, and the way input.js can see.
-
-    `page.keyboard.press()` is a down and an up in about a millisecond.
-    core/input.js builds its press EDGE inside `update()` as (held - prev), so a
-    frame that never lands between the two produces no edge and the keystroke is
-    silently dropped. That is a property of the input layer, not a bug — but a
-    harness that uses `press()` will hang forever waiting for a battle that is
-    actually progressing normally, and it looks exactly like a wedged game.
-
-    Both QA passes need this, so it lives here rather than in each.
-    """
-    page.keyboard.down(key)
-    page.wait_for_timeout(hold)
-    page.keyboard.up(key)
-    page.wait_for_timeout(settle)
-
-
-def dismiss(page, limit=30):
-    """Press through every open dialogue until the overworld is live again.
-
-    The boot monologue is the intro PLUS the first stage's lines, because
-    `speakStage()` is chained off the intro's promise — so a fresh boot is five
-    lines, and a line needs two presses (one to complete the typing, one to
-    advance). Ten to twelve presses, not three. The generous limit costs
-    milliseconds and makes the count not matter.
-    """
-    for _ in range(limit):
-        if page.evaluate("() => window.__hd2d.state.mode") != "dialogue":
-            return
-        tap(page, "KeyE", hold=50, settle=90)
-
-
 def main():
     if not (ROOT / "dist" / "index.html").exists():
         sys.exit("dist/ missing - run `npm run build` first")
-
-    # The helper lives next to this file, and the run may be started from the
-    # project root (`python tests/qa-level.py`), so the script's own directory
-    # has to be on the path or `import qa_server` fails on a name that exists.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import qa_server  # the same ThreadingTCPServer/port-0 trick as qa.py
 
     httpd = qa_server.serve(ROOT / "dist")
     port = httpd.server_address[1]
@@ -104,124 +70,163 @@ def main():
 
         page.goto(f"http://127.0.0.1:{port}/index.html",
                   wait_until="domcontentloaded", timeout=30000)
-        boot(page)
-        clear_save(page)
-
-        # ---- the intro must be playing, and the level must have an objective --
+        page.wait_for_function("() => !!window.__hd2d", timeout=30000)
+        page.wait_for_timeout(900)
+        page.evaluate("() => window.localStorage.clear()")
         page.reload(wait_until="domcontentloaded", timeout=30000)
-        boot(page)
-        st = page.evaluate(PAGE)
-        check("intro is on screen at boot", st["mode"] == "dialogue", st["mode"])
-        check("level 1 loaded", st["level"]["id"] == "level1", st["level"])
-        check("first objective is movement", st["level"]["objective"] == "Move with WASD",
-              st["level"]["objective"])
-        check("bag starts empty", st["bag"] == {"gold": 0, "items": {}}, st["bag"])
+        page.wait_for_function("() => !!window.__hd2d", timeout=30000)
+        page.wait_for_timeout(1000)
 
-        dismiss(page)
-        st = page.evaluate(PAGE)
-        check("after the intro the overworld is live", st["mode"] == "overworld", st["mode"])
-        check("objective is still stage 1 after the intro",
-              st["level"]["objective"] == "Move with WASD", st["level"]["objective"])
+        print("\n== start screen ==")
+        ts = page.evaluate("() => window.__hd2d.titleState")
+        check("the title is up at boot", ts["open"] is True, ts)
+        check("the cursor starts on Nuova partita", ts["selection"] == "new", ts["selection"])
+        check("Continua is disabled with no save", ts["hasSave"] is False, ts["hasSave"])
+        check("the title panel is actually visible", page.evaluate(TITLE_VISIBLE) is True)
 
-        # ---- moving must spend the first stage ---------------------------------
-        # Every advance opens the NEXT stage's lines through `speakStage()`, and
-        # an open dialogue eats `interact`. So the harness must always dismiss
-        # after an advance, or the next KeyE just closes a monologue and looks
-        # exactly like a marker that silently refuses to work.
+        # The regression: an author `display: grid` on `.title` beat the UA
+        # `[hidden] { display: none }`, so el.hidden = true did nothing and the
+        # menu stayed over the game after starting.
+        page.click(".title-row[data-id='new']")
+        page.wait_for_timeout(800)
+        check("choosing Nuova partita hides the title", page.evaluate(TITLE_VISIBLE) is False)
+        check("starting a game leaves the title state",
+              page.evaluate("() => window.__hd2d.titleState.open") is False)
+
+        print("\n== intro and first stage ==")
+        page.wait_for_timeout(400)
+        st = page.evaluate(PAGE)
+        check("the intro is playing", st["mode"] == "dialogue", st["mode"])
+        check("level 1 loaded", st["level"]["id"] == "level1", st["level"]["id"])
+        check("the first objective is movement",
+              st["level"]["objective"] == "Muoviti con WASD", st["level"]["objective"])
+        check("the bag starts empty", st["bag"] == {"gold": 0, "items": {}}, st["bag"])
+
+        qa_drive.start_new_game(page)
+        st = page.evaluate(PAGE)
+        check("the overworld is live after the intro", st["mode"] == "overworld", st["mode"])
+
+        print("\n== village ==")
+        v = st["village"]
+        check("the village has a name", bool(v["name"]), v.get("name"))
+        check("the village has a terrace centre", v["centre"] is not None, v["centre"])
+        check("the village has buildings", v["pieces"] > 4, v["pieces"])
+        check("the village has solid colliders", v["colliders"] > 4, v["colliders"])
+        check("the village has talkable anchors", len(v["anchors"]) >= 2, len(v["anchors"]))
+        spawn = page.evaluate("() => window.__hd2d.leaderPos()")
+        check("the party starts inside the village safe zone",
+              page.evaluate(f"() => window.__hd2d.inVillage({spawn[0]}, {spawn[1]})") is True, spawn)
+
+        print("\n== progression ==")
         before = page.evaluate("() => window.__hd2d.level.index")
+        qa_drive.tap(page, "KeyW", hold=50, settle=60)
         page.keyboard.down("KeyW")
-        page.wait_for_timeout(1400)
+        page.wait_for_timeout(1500)
         page.keyboard.up("KeyW")
-        page.wait_for_timeout(200)
-        dismiss(page)
+        page.wait_for_timeout(300)
+        qa_drive.dismiss(page)
         st = page.evaluate(PAGE)
         check("walking advances the level", st["level"]["index"] > before,
               f"{before} -> {st['level']['index']}")
-        check("objective is now the conversation",
-              st["level"]["objective"] == "Talk to Vell with E", st["level"]["objective"])
 
-        # ---- a battle at the wrong moment must NOT skip stages ----------------
-        # The mechanism: `advance` only spends the CURRENT stage, so an event
-        # arriving early is inert. Assert the stage pointer cannot jump.
-        # ONE enemy on purpose. Every press is answered by a fresh command
-        # prompt, and a two-enemy group doubles the turns; a bounded loop that
-        # gives up leaves the game mid-battle and every later check reads the
-        # wrong state. Fight driving is qa.py's job, not this pass's.
+        markers = page.evaluate("() => window.__hd2d.markers")
+        by_id = {m["id"]: m for m in markers}
+        check("the village elder is a marker", "vell" in by_id, list(by_id))
+
+        # Winning a fight the level is not waiting for must not skip stages.
         idx = page.evaluate("() => window.__hd2d.level.index")
         page.evaluate("() => { window.__hd2d.encounter('meadow', ['slime']); }")
         page.wait_for_function("() => window.__hd2d.state.mode === 'battle'", timeout=25000)
         page.wait_for_timeout(700)
         rows = page.evaluate("() => window.__hd2d.state.promptRows")
-        check("the command list offers the party something", len(rows) > 0, rows)
+        check("the command list is in Italian", "Attacco" in rows, rows)
         for _ in range(220):
             if page.evaluate("() => window.__hd2d.state.mode") == "overworld":
                 break
-            tap(page)
+            qa_drive.tap(page)
         page.wait_for_timeout(2200)
-        over = page.evaluate("() => window.__hd2d.state.mode")
-        check("the fight can actually be driven to a result", over != "battle", over)
         st = page.evaluate(PAGE)
-        # Winning a fight the level was not waiting for may or may not spend a
-        # stage depending on which one is active; what must never happen is a
-        # jump of more than one stage.
+        check("the fight can be driven to a result", st["mode"] != "battle", st["mode"])
         check("an event cannot skip several stages",
-              st["level"]["index"] <= idx + 1,
-              f"{idx} -> {st['level']['index']}")
-        # A won fight opens the next stage's lines; close them before going on,
-        # or the next tap just advances a monologue instead of talking to Vell.
-        dismiss(page)
+              st["level"]["index"] <= idx + 1, f"{idx} -> {st['level']['index']}")
+        check("gold accumulates from victories", st["bag"]["gold"] > 0, st["bag"]["gold"])
+        qa_drive.dismiss(page)
 
-        # ---- the cache must really put tonics in the bag ----------------------
-        # Order matters: the level is still waiting on Vell, and the cache is
-        # only reachable once that stage is spent. Teleporting straight to the
-        # cache proves nothing — the stage pointer has to move first.
-        page.evaluate("() => { window.__hd2d.teleport(20.5, 31.5); }")
+        print("\n== the cache ==")
+        # Order matters: the level is waiting on the elder, and the cache's stage
+        # is only reachable once that one is spent. Teleporting straight to the
+        # cache proves nothing about ordering.
+        elder = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'vell')")
+        page.evaluate(f"() => window.__hd2d.teleport({elder['x']}, {elder['z']})")
         page.wait_for_timeout(400)
-        tap(page, "KeyE", hold=50, settle=300)
-        dismiss(page)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
         st = page.evaluate(PAGE)
-        check("talking to Vell spends the conversation stage",
+        check("talking to the elder spends its stage",
               st["level"]["stage"] == "cache", st["level"])
 
         before_bag = page.evaluate("() => window.__hd2d.bag")
-        page.evaluate("() => { window.__hd2d.teleport(16.5, 26.5); }")
+        cache = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'cache')")
+        page.evaluate(f"() => window.__hd2d.teleport({cache['x']}, {cache['z']})")
         page.wait_for_timeout(400)
-        tap(page, "KeyE", hold=50, settle=300)
-        dismiss(page)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
         after = page.evaluate("() => window.__hd2d.bag")
         check("the cache hands over real items",
               after["items"].get("tonic", 0) > before_bag["items"].get("tonic", 0),
               f"{before_bag} -> {after}")
-        # The return trip must not farm: the marker is single-use for its gift.
-        page.evaluate("() => { window.__hd2d.teleport(16.5, 26.5); }")
+
+        page.evaluate(f"() => window.__hd2d.teleport({cache['x']}, {cache['z']})")
         page.wait_for_timeout(300)
-        tap(page, "KeyE", hold=50, settle=300)
-        dismiss(page)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
         again = page.evaluate("() => window.__hd2d.bag")
         check("the cache cannot be farmed", again["items"] == after["items"],
               f"{after} -> {again}")
 
-        # ---- gold must accumulate ---------------------------------------------
-        gold = page.evaluate("() => window.__hd2d.bag.gold")
-        check("gold accumulates from victories", isinstance(gold, int) and gold >= 0, gold)
-
-        # ---- save / restore ----------------------------------------------------
+        print("\n== save / load ==")
         saved = page.evaluate("() => window.__hd2d.save()")
         check("save writes", saved is True, saved)
-        has = page.evaluate("() => window.__hd2d.hasSave()")
-        check("a save slot exists", has is True, has)
         before_level = page.evaluate("() => window.__hd2d.level.index")
         before_bag = page.evaluate("() => window.__hd2d.bag")
 
         page.reload(wait_until="domcontentloaded", timeout=30000)
-        boot(page)
-        dismiss(page)
+        page.wait_for_function("() => !!window.__hd2d", timeout=30000)
+        page.wait_for_timeout(1000)
+        ts = page.evaluate("() => window.__hd2d.titleState")
+        check("the title offers Continua once a save exists", ts["hasSave"] is True, ts)
+        # Continua is row index 1; navigate to it explicitly rather than relying
+        # on the cursor position.
+        page.click(".title-row[data-id='continue']")
+        page.wait_for_timeout(900)
+        qa_drive.dismiss(page)
         st = page.evaluate(PAGE)
+        check("the title hides on Continua too", page.evaluate(TITLE_VISIBLE) is False)
         check("the level pointer survives a reload", st["level"]["index"] == before_level,
               f"{before_level} -> {st['level']['index']}")
         check("the bag survives a reload", st["bag"] == before_bag,
               f"{before_bag} -> {st['bag']}")
         check("no intro replay on resume", st["mode"] == "overworld", st["mode"])
+
+        print("\n== info panel ==")
+        # Esc via tap(), not press(): core/input.js derives the edge inside
+        # update(), so a press() with no frame between down and up never fires.
+        qa_drive.tap(page, "Escape", hold=60, settle=500)
+        menu_open = page.evaluate("() => !!document.querySelector('.menu:not([hidden])')")
+        check("Esc opens the pause menu", menu_open is True, menu_open)
+        # Back to the title from the pause menu: Sistema tab -> Torna al titolo.
+        page.click(".menu-item[data-tab='Sistema']")
+        page.wait_for_timeout(300)
+        page.click(".menu-item[data-act='act-title']")
+        page.wait_for_timeout(700)
+        check("Torna al titolo reopens the start screen", page.evaluate(TITLE_VISIBLE) is True)
+        page.click(".title-row[data-id='info']")
+        page.wait_for_timeout(400)
+        has_info = page.evaluate("() => !!document.querySelector('.title-info')")
+        check("Informazioni opens a panel", has_info is True, has_info)
+        qa_drive.tap(page, "Escape", hold=60, settle=300)
+        check("the info panel closes back to the menu",
+              page.evaluate("() => window.__hd2d.titleState.view") == "menu")
 
         check("no page errors", not errors, errors[:3])
         browser.close()
@@ -233,7 +238,7 @@ def main():
         for f in failures:
             print(f"  - {f}")
         sys.exit(1)
-    print("all level/bag/save checks passed")
+    print("all title / level / village / bag / save checks passed")
 
 
 if __name__ == "__main__":

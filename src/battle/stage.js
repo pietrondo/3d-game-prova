@@ -260,7 +260,7 @@ export function createStage({
     const t = actorFor(p.target);
     switch (type) {
       case 'turn':
-        hud.setTurnHint(a ? `${p.actor.name}'s turn` : null);
+        hud.setTurnHint(a ? `Turno di ${p.actor.name}` : null);
         return wait(0.1);
       case 'action': {
         if (a && t) a.face(facingToward(a, t));
@@ -276,12 +276,12 @@ export function createStage({
       case 'boost':
         brokeBoost = !p.gained;
         if (t) t.setTint(0xffd050);
-        popTag(t, p.gained ? 'BOOST' : 'BREAK', '#ffd050', 19);
+        popTag(t, p.gained ? 'POTENZIA' : 'SPEZZATO', '#ffd050', 19);
         engine.shake(0.12, 0.2);
         return wait(0.22).then(() => t?.setTint(null));
       case 'weak':                                 // the target RESISTED the hit
         if (t) t.setTint(0xffffff);
-        popTag(t, 'RESIST', '#c8c0d8', 16);
+        popTag(t, 'RESISTE', '#c8c0d8', 16);
         return wait(0.14).then(() => t?.setTint(null));
       case 'immune':
         popTag(t, `IMMUNE ${String(p.element || '').toUpperCase()}`, '#8fb8e8', 18);
@@ -299,8 +299,8 @@ export function createStage({
         engine.shake(big ? 0.55 : 0.18, big ? 0.36 : 0.2);
         if (r.amount > 0) {
           popNum(t, r.amount, size, colour);
-          if (r.crit) popTag(t, 'CRIT', '#ff8a4a', 19);
-        } else popTag(t, 'BLOCKED', '#8fb8e8', 17);
+          if (r.crit) popTag(t, 'CRITICO', '#ff8a4a', 19);
+        } else popTag(t, 'BLOCCATO', '#8fb8e8', 17);
         return wait(big ? 0.11 : 0.06).then(() => { syncHud(); return wait(0.3); });
       }
       case 'heal':
@@ -311,12 +311,12 @@ export function createStage({
         popNum(t, `+${p.amount}`, 22, '#8bf0b0');
         return wait(0.26).then(syncHud);
       case 'miss':
-        popTag(t || a, p.reason === 'evaded' ? 'MISS' : '—', '#8a8299', 16);
+        popTag(t || a, p.reason === 'evaded' ? 'MANCATO' : '—', '#8a8299', 16);
         return wait(0.24);
       case 'down':
         if (t) t.state = 'dead';
         engine.shake(0.4, 0.3);
-        popTag(t, 'DOWN', '#ff6a4a', 22);
+        popTag(t, 'A TERRA', '#ff6a4a', 22);
         syncHud();
         return wait(0.42);
       case 'end':
@@ -418,7 +418,7 @@ export function createStage({
       asking = true;
       commander.collect(battle).finally(() => { asking = false; });
     }
-    if (battle.elapsed > BATTLE_TIMEOUT && battleDone) bail('Battle lost in the confusion');
+    if (battle.elapsed > BATTLE_TIMEOUT && battleDone) bail('Battaglia persa nella confusione');
     for (const a of enemyActors) a.update(step);
   }
 

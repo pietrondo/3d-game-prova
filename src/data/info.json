@@ -1,0 +1,53 @@
+{
+  "title": "L'Isola Senza Risposta",
+  "subtitle": "Un frammento di gioco di ruolo in stile HD-2D",
+
+  "menu": {
+    "new": "Nuova partita",
+    "newNote": "ricomincia da capo",
+    "continue": "Continua",
+    "continueNote": "riprendi dal salvataggio",
+    "save": "Salva",
+    "saveNote": "scrivi il salvataggio",
+    "info": "Informazioni",
+    "infoNote": "storia, comandi, combattimento"
+  },
+
+  "sections": [
+    {
+      "title": "La storia",
+      "paragraphs": [
+        "La nave da rilevamento ha smesso di rispondere tre giorni fa. Vell \u00e8 l'unica della spedizione che ne \u00e8 uscita, e l'unica che sa ancora disegnare una mappa.",
+        "L'isola che trovi \u00e8 quella mappa. Un altipiano in mezzo al mare, un prato, della pietra, e qualcosa che aspetta in cima da pi\u00f9 tempo di quanto la spedizione sia durata.",
+        "Sei quattro persone. Non \u00e8 un numero scelto da te, ed \u00e8 tutto quello che hai."
+      ]
+    },
+    {
+      "title": "Comandi",
+      "keys": [
+        ["W A S D", "Cammina"],
+        ["E", "Parla, raccogli, esamina"],
+        ["Esc", "Menu: squadra, abilit\u00e0, oggetti, sistema"],
+        ["Shift", "Corri"],
+        ["`", "Cambia la scala di rendering (1 = HD-2D, 4 = quasi 8-bit)"],
+        ["F3", "Stato interno, per il debug"]
+      ]
+    },
+    {
+      "title": "Combattimento",
+      "paragraphs": [
+        "I turni scorrono per velocit\u00e0, non per ordine di fila: vedi la sequenza in cima allo schermo.",
+        "Ogni nemico ha resistenze e immunit\u00e0. Un colpo di un elemento a cui \u00e8 debole fa il doppio, uno a cui resiste fa la met\u00e0, e uno a cui \u00e8 immune non fa niente. Il sottotitolo di ogni bersaglio ti dice gi\u00e0 la risposta migliore che hai.",
+        "Potenziamento: spendi un turno per potenziare un alleato, che recupera vita all'inizio di ogni suo turno. Colpire un nemico potenziato lo spezza e gli toglie il vantaggio.",
+        "La Sentinella di Pietra \u00e8 immune ai fulmini. L'unica risposta vera \u00e8 il ghiaccio di Tess."
+      ]
+    },
+    {
+      "title": "Crediti",
+      "paragraphs": [
+        "Costruito con three.js. Sviluppo e build con Vite, test con Vitest.",
+        "Nessun asset binario: ogni texture \u00e8 disegnata a runtime su una canvas, e il mondo \u00e8 generato da un seme. Il gioco \u00e8 un diff di testo."
+      ]
+    }
+  ]
+}

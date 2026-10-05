@@ -1,6 +1,6 @@
 {
   "slime": {
-    "name": "Bog Slime",
+    "name": "Melma di Palude",
     "sprite": { "kind": "slime", "palette": "slime", "cell": 32 },
     "level": 2, "maxHP": 70, "maxMP": 0,
     "attack": 12, "defense": 8, "magic": 4, "speed": 7,
@@ -14,7 +14,7 @@
     "exp": 18, "gold": 7
   },
   "bat": {
-    "name": "Gloom Bat",
+    "name": "Pipistrello Cupo",
     "sprite": { "kind": "bat", "palette": "bat", "cell": 32 },
     "level": 3, "maxHP": 60, "maxMP": 0,
     "attack": 16, "defense": 6, "magic": 6, "speed": 15,
@@ -28,7 +28,7 @@
     "exp": 22, "gold": 9
   },
   "sentinel": {
-    "name": "Stone Sentinel",
+    "name": "Sentinella di Pietra",
     "sprite": { "kind": "sentinel", "palette": "sentinel", "cell": 32 },
     "level": 6, "maxHP": 170, "maxMP": 40,
     "attack": 22, "defense": 18, "magic": 18, "speed": 6,
@@ -42,12 +42,12 @@
     "exp": 90, "gold": 45
   },
   "ruin_bat": {
-    "name": "Ruin Bat",
+    "name": "Pipistrello Rovinoso",
     "sprite": { "kind": "bat", "palette": "bat", "cell": 32 },
     "level": 5, "maxHP": 95, "maxMP": 0,
     "attack": 24, "defense": 10, "magic": 8, "speed": 17,
     "weaponType": "dagger",
-    "resistances": { "physical": 0.5, "fire": 1, "ice": 1, "lightning": 1, "dark": 2, "light": 0.5 },
+    "resistances": { "physical": 0.5, "fire": 1, "ice": 1, "lightning": 1, "dark": 0.5, "light": 0.5 },
     "immunities": [],
     "vulnerabilities": [],
     "skills": ["gust_fangs", "shadow_dive"],

@@ -1,4 +1,4 @@
-# QA Findings — round 3
+# QA Findings — round 4
 
 Measured, not inferred. Every number below comes from `tests/qa.py`, which drives
 the real game in headless Chromium through the `window.__hd2d` handle and writes
@@ -8,12 +8,47 @@ the real game in headless Chromium through the `window.__hd2d` handle and writes
 npm run build && python tests/qa.py
 ```
 
-> Round 1 is [`qa-findings-round1.md`](./qa-findings-round1.md). Round 2's
-> numbers are quoted below where round 3 changed the verdict, so the reader can
-> see what moved and why. Two of round 2's headline numbers were **wrong
-> measurements** — see [the metric was lying](#the-metric-was-lying).
+> Round 1 is [`qa-findings-round1.md`](./qa-findings-round1.md). Rounds 2 and 3 are
+> kept below because they each overturned numbers from the round before, and a
+> reader needs to see that they were overturned rather than never made.
+> Round 4 is a **world change**, not a bug-fix round: the island doubled, gained a
+> village, and the game gained a title screen and Italian.
 
-## Verdict
+## Round 4 — what changed and what it measured
+
+The world went from a 40×40 island to 64×64 and gained a starting village on a
+carved terrace. Measured after that change:
+
+| metric | round 3 | round 4 | note |
+|---|---|---|---|
+| party overlap | 13% | **13%** | unchanged, and this time it was checked against a settled formation |
+| blocked ground | 2.3% | **9.5% wilderness** | the sample moved OUT of the village — houses are obstacles by design, so the old number was measuring the wrong place |
+| walked counter error | 0.7% | **2.9%** | within tolerance |
+| page errors | none | **none** | |
+
+Two things worth recording, because both were nearly filed as false positives:
+
+**The 9.5% is not a regression.** The target is under 25% for the WILDERNESS.
+Measuring inside the village returned 33.6% and that is correct behaviour: a
+village is full of things you cannot walk through. The harness now samples outside
+it and reports the village's own obstacle count separately.
+
+**The overlap was a real bug wearing a false-positive's clothes.** The plan was to
+make the measurement smarter — wait for the formation to settle, and count party
+members only. That was done, and the number went UP, to 66%. The stable
+measurement then showed what the noisy one had been hiding: the party's tail was
+permanently stuck. The spawn put the leader at (31.5, 47.76) and the signpost
+collider at (31.5, 47.93), and the tail's slot was behind it. `actor.js` collides
+by sliding, so the tail pressed into the post forever and never reached its slot.
+The spawn now clears the party's whole footprint, not just its centre, and the
+number fell to 13%.
+
+The lesson is the uncomfortable one: **a measurement is not proven wrong by
+disliking its answer.** Round 3's overlap number was wrong for a real reason (a
+misplaced box and the quad instead of the ink). This time the fix to the
+measurement made it MORE accurate and it reported a worse, genuine defect.
+
+## Verdict — rounds 1 to 3, still standing
 
 | # | Round 1 claim | Round 2 said | Round 3 measures | Verdict |
 |---|---|---|---|---|

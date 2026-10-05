@@ -1,7 +1,13 @@
 /**
  * src/ui/menu.js — owner: AGENT-UI
  *
- * Tabs: Party | Skills | Items | System. DOM only, no Three.js.
+ * Tabs: Squadra | Abilità | Oggetti | Sistema. DOM only, no Three.js.
+ *
+ * Player-facing text is Italian and lives inline here. There is no i18n layer
+ * on purpose: the game ships in one language, and a lookup table for a single
+ * locale is indirection with no second case to justify it. If a second language
+ * is ever needed, the strings are already clustered in the files that render
+ * them.
  *
  * Optional 4th argument to `open()` — the contract signature is frozen, so this
  * is an added optional field, not a change:
@@ -21,6 +27,8 @@
  *     onSave(),               // persists the game. The button is omitted when
  *                             //   absent, so a caller without a save system
  *                             //   gets no dead control
+ *     onTitle(),              // returns to the start screen. Omitted when the
+ *                             //   caller has no title to return to
  *   })
  *
  * `items` rows take an optional `count`; when present it is rendered as `xN`, so
@@ -38,8 +46,10 @@
  *
  * Exports: createMenu
  */
+import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, tr } from '../core/terms.js';
+
 export function createMenu(root) {
-  const TABS = ['Party', 'Skills', 'Items', 'System'];
+  const TABS = ['Squadra', 'Abilità', 'Oggetti', 'Sistema'];
   const RENDER_SCALES = [1, 2, 3, 4]; // mirrors core/engine.js RENDER_SCALES values
   const ACCENTS = ['#5fbf6a', '#5a9fe0', '#f0c860', '#c07ae0', '#e0805f', '#6fc9b8'];
   const KEYS = new Set(['Space', 'Enter', 'NumpadEnter', 'KeyE']);
@@ -105,10 +115,10 @@ export function createMenu(root) {
     row.appendChild(el('span', 'menu-row-num', m.maxMP > 0 ? `${m.currentMP ?? 0}/${m.maxMP ?? 0}` : '—'));
 
     let chip = '—';
-    if ((m.currentHP ?? 1) <= 0) chip = 'DOWN';
+    if ((m.currentHP ?? 1) <= 0) chip = 'A TERRA';
     else if (strongestWeakness) {
       const w = strongestWeakness(m);
-      if (w) chip = `${String(w.element).toUpperCase()} x${w.mult}`;
+      if (w) chip = `${tr(ELEMENT_IT, w.element).toUpperCase()} x${w.mult}`;
     }
     row.appendChild(el('span', 'menu-chip', chip));
     return row;
@@ -121,9 +131,9 @@ export function createMenu(root) {
       return row;
     }
     row.appendChild(el('span', 'menu-row-name', label(s)));
-    row.appendChild(el('span', 'menu-row-num', s.kind || ''));
-    row.appendChild(el('span', 'menu-row-num', s.mp != null ? `${s.mp} MP` : ''));
-    row.appendChild(el('span', 'menu-chip', String(s.element || s.weaponType || '—').toUpperCase()));
+    row.appendChild(el('span', 'menu-row-num', tr(SKILL_KIND_IT, s.kind)));
+    row.appendChild(el('span', 'menu-row-num', s.mp != null ? `${s.mp} PM` : ''));
+    row.appendChild(el('span', 'menu-chip', String(tr(ELEMENT_IT, s.element) || s.weaponType || '—').toUpperCase()));
     return row;
   }
 
@@ -138,9 +148,9 @@ export function createMenu(root) {
     // an item the player does not have is a lie in a list they are reading to
     // decide what to use in a fight.
     if (it.count != null) row.appendChild(el('span', 'menu-row-num', `x${it.count}`));
-    row.appendChild(el('span', 'menu-row-num', it.kind || ''));
-    row.appendChild(el('span', 'menu-row-num', it.power != null ? `pow ${it.power}` : ''));
-    row.appendChild(el('span', 'menu-chip', it.price != null ? `${it.price}G` : '—'));
+    row.appendChild(el('span', 'menu-row-num', tr(ITEM_KIND_IT, it.kind)));
+    row.appendChild(el('span', 'menu-row-num', it.power != null ? `pot ${it.power}` : ''));
+    row.appendChild(el('span', 'menu-chip', it.price != null ? `${it.price} oro` : '—'));
     return row;
   }
 
@@ -170,22 +180,22 @@ export function createMenu(root) {
     }));
 
     const rows = [];
-    if (tab === 'Party') {
-      if (!data.members.length) rows.push(el('div', 'menu-item is-note', 'No party data'));
+    if (tab === 'Squadra') {
+      if (!data.members.length) rows.push(el('div', 'menu-item is-note', 'Nessun dato della squadra'));
       data.members.forEach((m, i) => rows.push(partyRow(m, i, psel)));
-    } else if (tab === 'Skills') {
+    } else if (tab === 'Abilità') {
       const all = list(data.skills);
-      if (!all.length) rows.push(el('div', 'menu-item is-note', 'No skills learned'));
+      if (!all.length) rows.push(el('div', 'menu-item is-note', 'Nessuna abilità appresa'));
       all.forEach((s) => rows.push(skillRow(s)));
-    } else if (tab === 'Items') {
+    } else if (tab === 'Oggetti') {
       const all = list(data.items);
-      if (!all.length) rows.push(el('div', 'menu-item is-note', 'No items'));
+      if (!all.length) rows.push(el('div', 'menu-item is-note', 'Nessun oggetto'));
       all.forEach((it) => rows.push(itemRow(it)));
     } else {
       // NOTE: never classList.add(cond ? 'x' : '') — the empty token throws a
       // SyntaxError, which used to abort render() between the tab bar and the
       // panel and leave the menu dead.
-      const scaleBtn = el('button', 'menu-item' + (psel === 0 ? ' is-sel' : ''), `Render scale: ${scale}`);
+      const scaleBtn = el('button', 'menu-item' + (psel === 0 ? ' is-sel' : ''), `Scala di rendering: ${scale}`);
       scaleBtn.type = 'button';
       scaleBtn.dataset.act = 'scale';
       rows.push(scaleBtn);
@@ -193,12 +203,20 @@ export function createMenu(root) {
       // that does nothing is a UX lie, and a browser that refuses localStorage
       // would give a permanent one.
       if (typeof opts.onSave === 'function') {
-        const saveBtn = el('button', 'menu-item' + (psel === rows.length ? ' is-sel' : ''), 'Save game');
+        const saveBtn = el('button', 'menu-item' + (psel === rows.length ? ' is-sel' : ''), 'Salva partita');
         saveBtn.type = 'button';
         saveBtn.dataset.act = 'act-save';
         rows.push(saveBtn);
       }
-      const quit = el('button', 'menu-item' + (psel === rows.length ? ' is-sel' : ''), 'Quit to overworld');
+      // Back to the start screen. It is what makes Load reachable after a game
+      // has begun — a title you can only see once is not a menu, it is a splash.
+      if (typeof opts.onTitle === 'function') {
+        const titleBtn = el('button', 'menu-item' + (psel === rows.length ? ' is-sel' : ''), 'Torna al titolo');
+        titleBtn.type = 'button';
+        titleBtn.dataset.act = 'act-title';
+        rows.push(titleBtn);
+      }
+      const quit = el('button', 'menu-item' + (psel === rows.length ? ' is-sel' : ''), 'Torna al mondo');
       quit.type = 'button';
       quit.dataset.act = 'act-quit';
       rows.push(quit);
@@ -209,7 +227,7 @@ export function createMenu(root) {
     // panel on purpose — the panel scrolls, the footer must not.
     if (opts.gold != null || opts.saveState) {
       footEl.replaceChildren(
-        el('span', 'menu-foot-gold', `${opts.gold ?? 0} G`),
+        el('span', 'menu-foot-gold', `${opts.gold ?? 0} oro`),
         el('span', 'menu-foot-note', opts.saveState || ''),
       );
     } else footEl.textContent = '';
@@ -243,6 +261,10 @@ export function createMenu(root) {
       if (typeof opts.onSave === 'function') opts.onSave();
       // Re-render so the footer's save note reflects what just happened.
       return render();
+    }
+    if (t.dataset.act === 'act-title') {
+      if (typeof opts.onTitle === 'function') opts.onTitle();
+      return close();
     }
     if (t.dataset.act === 'act-quit') {
       if (typeof opts.onQuit === 'function') opts.onQuit();

@@ -19,6 +19,7 @@
  *   onMove    the leader actually TRAVELLED, not the key was pressed
  *   onTalk    a marker finished its dialogue
  *   onBattle  a fight was WON
+ *   onMenu    the pause menu was CLOSED (not opened — see below)
  *
  * `advance` is the event that SPENDS a stage; `when` is the gate checked when a
  * stage is ENTERED. Two fields because "what teaches this step" and "when may
@@ -37,6 +38,11 @@
  * stride they were halfway through. A briefing is a monologue over a live
  * world; a conversation with a person still freezes, because that is a
  * different thing and the player expects to stop for it.
+ *
+ * `onMenu` fires when the pause menu CLOSES, not when it opens, and that is
+ * deliberate: the stage it advances is the one that teaches the menu, and its
+ * successor speaks its lines immediately. Firing on open would put a dialogue
+ * box on top of the menu the player is reading.
  *
  * ## Why a machine and not a chain of `if`s in the director
  *
@@ -68,6 +74,7 @@ export const EVENTS = {
   MOVE: 'onMove',
   TALK: 'onTalk',
   BATTLE: 'onBattle',
+  MENU: 'onMenu',
   ZONE: 'onZone',
 };
 

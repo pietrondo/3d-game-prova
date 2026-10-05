@@ -7,13 +7,13 @@
       360
     ],
     "pos": [
-      20.5,
-      0.46,
-      28.5
+      31.5,
+      0.37,
+      46.73
     ],
-    "tile": "moss",
+    "tile": "grass",
     "zone": "meadow",
-    "propCount": 192,
+    "propCount": 499,
     "walked": 0,
     "asking": false,
     "draining": false,
@@ -22,50 +22,38 @@
     "promptRows": [],
     "promptSel": 0,
     "camera": [
-      20.5,
-      17.29,
-      46.89
+      31.39,
+      17.2,
+      64.79
     ],
     "fov": 34,
     "battle": null,
-    "sceneChildren": 9
+    "sceneChildren": 10
   },
   "chunkinessByScale": {
     "1": {
-      "meanStep": 8.31,
-      "longestFlatRun": 64,
-      "distinct": 155
+      "meanStep": 7.54,
+      "longestFlatRun": 62,
+      "distinct": 156
     },
     "2": {
-      "meanStep": 8.33,
-      "longestFlatRun": 64,
-      "distinct": 155
+      "meanStep": 7.19,
+      "longestFlatRun": 62,
+      "distinct": 156
     },
     "3": {
-      "meanStep": 8.02,
-      "longestFlatRun": 60,
-      "distinct": 149
+      "meanStep": 6.95,
+      "longestFlatRun": 62,
+      "distinct": 141
     },
     "4": {
-      "meanStep": 7.4,
-      "longestFlatRun": 68,
-      "distinct": 142
+      "meanStep": 6.6,
+      "longestFlatRun": 62,
+      "distinct": 132
     }
   },
-  "partyOverlapPct": 12.9,
+  "partyOverlapPct": 13.2,
   "partySprites": [
-    {
-      "x": -502,
-      "y": 1002,
-      "h": 416,
-      "top": 587,
-      "bottom": 1002,
-      "wpx": 416,
-      "quad": 416,
-      "worldX": 121.99,
-      "worldZ": 114.55,
-      "shown": true
-    },
     {
       "x": 610,
       "y": 422,
@@ -74,106 +62,66 @@
       "bottom": 422,
       "wpx": 59,
       "quad": 89,
-      "worldX": 20.5,
-      "worldZ": 28.5,
+      "worldX": 31.5,
+      "worldZ": 46.73,
       "shown": true
     },
     {
       "x": 657,
-      "y": 394,
+      "y": 395,
       "h": 75,
-      "top": 318,
-      "bottom": 394,
+      "top": 320,
+      "bottom": 395,
       "wpx": 66,
       "quad": 75,
-      "worldX": 21.65,
-      "worldZ": 27.7,
+      "worldX": 32.65,
+      "worldZ": 45.93,
       "shown": true
     },
     {
       "x": 561,
-      "y": 393,
+      "y": 395,
       "h": 75,
-      "top": 318,
-      "bottom": 393,
+      "top": 320,
+      "bottom": 395,
       "wpx": 60,
       "quad": 75,
-      "worldX": 19.35,
-      "worldZ": 27.7,
+      "worldX": 30.35,
+      "worldZ": 45.93,
       "shown": true
     },
     {
-      "x": 616,
-      "y": 352,
-      "h": 73,
-      "top": 279,
-      "bottom": 352,
-      "wpx": 55,
-      "quad": 73,
-      "worldX": 20.5,
-      "worldZ": 26.45,
-      "shown": true
-    },
-    {
-      "x": 621,
-      "y": 490,
-      "h": 38,
-      "top": 452,
-      "bottom": 490,
-      "wpx": 38,
-      "quad": 38,
-      "worldX": 20.5,
-      "worldZ": 31.5,
-      "shown": true
-    },
-    {
-      "x": 438,
-      "y": 307,
-      "h": 32,
-      "top": 275,
-      "bottom": 307,
-      "wpx": 32,
-      "quad": 32,
-      "worldX": 16.5,
-      "worldZ": 26.5,
-      "shown": true
-    },
-    {
-      "x": 257,
-      "y": 320,
-      "h": 31,
-      "top": 290,
-      "bottom": 320,
-      "wpx": 31,
-      "quad": 31,
-      "worldX": 12.5,
-      "worldZ": 26.5,
-      "shown": true
-    },
-    {
-      "x": 874,
-      "y": 212,
-      "h": 28,
-      "top": 184,
-      "bottom": 212,
-      "wpx": 28,
-      "quad": 28,
-      "worldX": 26.5,
-      "worldZ": 22.5,
+      "x": 612,
+      "y": 335,
+      "h": 71,
+      "top": 264,
+      "bottom": 335,
+      "wpx": 53,
+      "quad": 71,
+      "worldX": 31.39,
+      "worldZ": 43.9,
       "shown": true
     }
   ],
-  "blocked": {
-    "blocked": 10,
+  "blockedVillage": {
+    "blocked": 148,
     "walkable": 441,
     "offIsland": 0,
     "total": 441,
-    "pct": 2.3
+    "pct": 33.6
+  },
+  "blocked": {
+    "blocked": 42,
+    "walkable": 441,
+    "offIsland": 0,
+    "total": 441,
+    "where": "wilderness",
+    "pct": 9.5
   },
   "walk": {
-    "real": 2.67,
-    "walked": 2.7,
-    "errorPct": 1.1
+    "real": 1.35,
+    "walked": 1.4,
+    "errorPct": 3.7
   },
   "battleState": {
     "mode": "battle",
@@ -183,38 +131,38 @@
       360
     ],
     "pos": [
-      20.5,
-      0.79,
-      25.83
+      31.5,
+      0.37,
+      45.38
     ],
-    "tile": "stone",
-    "zone": "stone",
-    "propCount": 192,
-    "walked": 2.7,
+    "tile": "grass",
+    "zone": "meadow",
+    "propCount": 499,
+    "walked": 1.4,
     "asking": true,
     "draining": false,
     "queued": 0,
     "promptOpen": true,
     "promptRows": [
-      "Attack",
-      "Ember Slash",
-      "Guard Up",
-      "Boost",
-      "Guard"
+      "Attacco",
+      "Fendente di Brace",
+      "Guardia Alta",
+      "Potenziamento",
+      "Guardia"
     ],
     "promptSel": 0,
     "camera": [
-      20.5,
-      17.42,
-      45.07
+      31.5,
+      17.2,
+      64.61
     ],
-    "fov": 30.058209257517593,
+    "fov": 30.021754045357135,
     "battle": {
       "state": "command",
       "round": 1,
       "result": null
     },
-    "sceneChildren": 10
+    "sceneChildren": 11
   },
   "prompt": {
     "hidden": false,
@@ -223,23 +171,23 @@
     "rows": [
       {
         "cls": "bt-row is-sel",
-        "text": "Attacksword"
+        "text": "Attaccosword"
       },
       {
         "cls": "bt-row",
-        "text": "Ember Slash4 MP \u00b7 fire"
+        "text": "Fendente di Brace4 PM \u00b7 fuoco"
       },
       {
         "cls": "bt-row",
-        "text": "Guard Up3 MP \u00b7 buff"
+        "text": "Guardia Alta3 PM \u00b7 potenziamento"
       },
       {
         "cls": "bt-row",
-        "text": "Boostmend 10% / turn"
+        "text": "Potenziamentocura 10% per turno"
       },
       {
         "cls": "bt-row",
-        "text": "Guardhalve damage"
+        "text": "Guardiadimezza i danni"
       }
     ]
   },
@@ -252,122 +200,146 @@
       "bottom": 1093,
       "wpx": 474,
       "quad": 474,
-      "worldX": 121.59,
-      "worldZ": 112.73,
+      "worldX": 132.59,
+      "worldZ": 132.27,
       "shown": true
     },
     {
       "x": 559,
       "y": 433,
       "h": 88,
-      "top": 345,
+      "top": 344,
       "bottom": 433,
       "wpx": 67,
       "quad": 101,
-      "worldX": 19.25,
-      "worldZ": 26.73,
+      "worldX": 30.25,
+      "worldZ": 46.28,
       "shown": true
     },
     {
-      "x": 482,
-      "y": 466,
+      "x": 519,
+      "y": 463,
       "h": 90,
-      "top": 376,
-      "bottom": 466,
+      "top": 373,
+      "bottom": 463,
       "wpx": 79,
       "quad": 90,
-      "worldX": 18.1,
-      "worldZ": 27.53,
+      "worldX": 29.77,
+      "worldZ": 47.1,
       "shown": true
     },
     {
       "x": 627,
-      "y": 465,
+      "y": 462,
       "h": 90,
-      "top": 375,
-      "bottom": 465,
-      "wpx": 71,
+      "top": 372,
+      "bottom": 462,
+      "wpx": 72,
       "quad": 90,
-      "worldX": 20.4,
-      "worldZ": 27.53,
+      "worldX": 31.4,
+      "worldZ": 47.08,
       "shown": true
     },
     {
       "x": 559,
-      "y": 520,
+      "y": 515,
       "h": 94,
-      "top": 426,
-      "bottom": 520,
+      "top": 421,
+      "bottom": 515,
       "wpx": 70,
       "quad": 94,
-      "worldX": 19.25,
-      "worldZ": 28.78,
+      "worldX": 30.25,
+      "worldZ": 48.33,
       "shown": true
     },
     {
-      "x": 644,
-      "y": 606,
-      "h": 45,
-      "top": 561,
-      "bottom": 606,
-      "wpx": 45,
-      "quad": 45,
-      "worldX": 20.5,
-      "worldZ": 31.5,
+      "x": 591,
+      "y": 294,
+      "h": 36,
+      "top": 258,
+      "bottom": 294,
+      "wpx": 36,
+      "quad": 36,
+      "worldX": 30.5,
+      "worldZ": 43.73,
       "shown": false
     },
     {
-      "x": 420,
-      "y": 368,
-      "h": 39,
-      "top": 330,
-      "bottom": 368,
-      "wpx": 39,
-      "quad": 39,
-      "worldX": 16.5,
-      "worldZ": 26.5,
+      "x": 1069,
+      "y": 402,
+      "h": 38,
+      "top": 364,
+      "bottom": 402,
+      "wpx": 38,
+      "quad": 38,
+      "worldX": 39,
+      "worldZ": 46.73,
       "shown": false
     },
     {
-      "x": 200,
-      "y": 377,
+      "x": 61,
+      "y": 509,
+      "h": 40,
+      "top": 470,
+      "bottom": 509,
+      "wpx": 40,
+      "quad": 40,
+      "worldX": 22,
+      "worldZ": 49.23,
+      "shown": false
+    },
+    {
+      "x": 643,
+      "y": -63,
+      "h": 26,
+      "top": -89,
+      "bottom": -63,
+      "wpx": 26,
+      "quad": 26,
+      "worldX": 31.5,
+      "worldZ": 31.23,
+      "shown": false
+    },
+    {
+      "x": 414,
+      "y": 257,
+      "h": 35,
+      "top": 222,
+      "bottom": 257,
+      "wpx": 35,
+      "quad": 35,
+      "worldX": 27,
+      "worldZ": 42.83,
+      "shown": false
+    },
+    {
+      "x": 815,
+      "y": 334,
       "h": 37,
-      "top": 340,
-      "bottom": 377,
+      "top": 297,
+      "bottom": 334,
       "wpx": 37,
       "quad": 37,
-      "worldX": 12.5,
-      "worldZ": 26.5,
-      "shown": false
-    },
-    {
-      "x": 940,
-      "y": 242,
-      "h": 34,
-      "top": 208,
-      "bottom": 242,
-      "wpx": 34,
-      "quad": 34,
-      "worldX": 26.5,
-      "worldZ": 22.5,
+      "worldX": 34.7,
+      "worldZ": 44.93,
       "shown": false
     },
     {
       "x": 636,
-      "y": 245,
-      "h": 96,
-      "top": 149,
-      "bottom": 245,
-      "wpx": 48,
-      "quad": 96,
-      "worldX": 20.5,
-      "worldZ": 22.83,
+      "y": 300,
+      "h": 93,
+      "top": 207,
+      "bottom": 300,
+      "wpx": 47,
+      "quad": 93,
+      "worldX": 31.5,
+      "worldZ": 42.38,
       "shown": true
     }
   ],
   "afterBattle": {
     "mode": "overworld",
-    "sprites": 10,
+    "sprites": 12,
     "battle": {
       "state": "command",
       "round": 1,

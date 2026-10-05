@@ -73,6 +73,17 @@ export function createInventory(items = {}) {
 
     get gold() { return gold; },
 
+    /**
+     * Back to a brand-new game: every count zero, no gold. Needed because a
+     * "Nuova partita" on the title screen must not inherit the bag of the
+     * session that was just running — otherwise starting over hands the player
+     * the tonics they already spent, and the reset is only cosmetic.
+     */
+    clear() {
+      for (const id of counts.keys()) counts.set(id, 0);
+      gold = 0;
+    },
+
     /** Every non-zero entry, catalogue order. What the UI renders. */
     entries() {
       const out = [];

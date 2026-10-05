@@ -49,6 +49,7 @@ import { tween, wait, Ease } from './core/tween.js';
 import { createTerrain } from './world/terrain.js';
 import { createSky } from './world/sky.js';
 import { createProps } from './world/props.js';
+import { createVillage } from './world/village.js';
 import { createParty } from './actors/party.js';
 import { createHud } from './ui/hud.js';
 import { createDialogue } from './ui/dialogue.js';
@@ -58,6 +59,7 @@ import { el } from './battle/commands.js';
 import { createInventory } from './core/inventory.js';
 import { createLevel, EVENTS } from './core/level.js';
 import { createSave } from './core/save.js';
+import { createTitle } from './ui/title.js';
 import './battle/battle.css';
 
 import TILES from './data/tiles.json';
@@ -66,10 +68,26 @@ import ACTORS from './data/actors.json';
 import SKILLS from './data/skills.json';
 import ITEMS from './data/items.json';
 import LEVEL1 from './data/level1.json';
+import VILLAGE from './data/village.json';
+import INFO from './data/info.json';
 
-const MAP = { width: 40, depth: 40, seed: 1337, heightScale: 3.2 };
-const SPAWN = { x: 20.5, z: 28.5 };
+// 64x64, not the original 40x40. The island is a radial falloff, so the size
+// is not a viewport — it IS the island: at 40 the shoreline sat ~14 units from
+// the centre and the whole game happened in a 27-unit disc, which is a clearing,
+// not a place. 64 puts the shore at ~22 units (a 44-unit island) and gives the
+// village, the meadow and the mesa their own room. Cost is 2.56x the terrain
+// cells and 2.56x the props; terrain is chunked and props are merged per type,
+// so it is some tens of extra draw calls, which the post pass absorbs.
+const MAP = { width: 64, depth: 64, seed: 1337, heightScale: 3.2 };
+// No longer hardcoded to the mesa top: the village is found on the terrain (see
+// world/village.js) and this is the fallback only if that search fails.
+const SPAWN = { x: 32, z: 42 };
 const PROP_DENSITY = 0.32;
+// 700 was tuned for 40x40, where props saturate near 230 and the cap is never
+// reached. On 64x64 the same density wants ~600 and the cap starts truncating
+// the far side of the map instead of failing loudly — a half-furnished island
+// that reads as a bug in the terrain.
+const PROP_MAX = 1600;
 const PARTY_IDS = ['olrik', 'brann', 'tess', 'maren'];   // formation + HUD order
 const DEADZONE = 0.85;   // world units the leader may wander before the camera moves
 const LEAD_AHEAD = 0.7;
@@ -96,27 +114,58 @@ const RUSTLE = 0.4;      // seconds of grass pop before the screen goes black
 const STONE_TILES = new Set(['stone', 'cliff']);
 const SUN_DIR = new THREE.Vector3(0.6, 0.7, 0.4).normalize();
 
+// The village terrace. NORMALISED on purpose (see terrain.js): `angle` is a
+// direction from the island centre and `at` a fraction of the island radius, so
+// the village follows the island when the size or the seed changes. Math.PI/2 is
+// +z — the near side of the map, which is the side the camera looks from, so the
+// village sits in FRONT of the mesa and the mesa is the climb you can see.
+const VILLAGE_SITE = { angle: Math.PI / 2, at: 0.60, r: 5.5, feather: 2.4 };
+
+// Markers are placed RELATIVE TO THE VILLAGE, not at absolute coordinates. A
+// hardcoded (20.5, 31.5) was a coordinate on a 40x40 island and means open sea
+// on a 64x64 one; anchored to the village they survive every change to the map.
+// `anchor` takes a named spot from village.json; `dx`/`dz` are world units from
+// the village centre.
 const MARKERS = [
   {
-    name: 'Vell', x: 20.5, z: 31.5, kind: 'talk',
+    id: 'vell', name: 'Vell', anchor: 'vell', kind: 'talk',
     lines: [
-      { speaker: 'Vell the Cartographer', text: 'Four of us came off that survey boat. I am the only one still walking.' },
+      { speaker: 'Vell la Cartografa', text: 'Ti sei svegliato. Credevo che la corrente ti avesse preso come gli altri.' },
+      { speaker: 'Vell la Cartografa', text: 'La nave non risponde da tre giorni. Io disegno quest\u2019isola da prima che affondasse, e non l\u2019ho mai finita.' },
     ],
   },
   {
-    name: 'the Rusted Cache', x: 16.5, z: 26.5, kind: 'item', give: { tonic: 3 },
+    id: 'cache', name: 'la Cassa Arrugginita', dx: 7.5, dz: 2.0, kind: 'item', give: { tonic: 3 },
     lines: [
-      { speaker: 'Rusted Cache', text: 'Somebody wedged this under the stone slab and never came back for it.' },
-      { speaker: 'Olrik', text: 'Field tonics. Enough to keep four of us breathing. Take them.' },
+      { speaker: 'Cassa Arrugginita', text: 'Qualcuno l\u2019ha incastrata sotto la lastra e non \u00e8 pi\u00f9 tornato a prenderla.' },
+      { speaker: 'Olrik', text: 'Tonici da campo. Abbastanza per farci respirare tutti e quattro. Li prendo.' },
     ],
   },
   {
-    name: 'the Reed Patrol', x: 12.5, z: 26.5, kind: 'battle', zone: 'meadow',
-    lines: [{ speaker: 'Reed Patrol', text: 'Nobody walks the meadow alone. Turn around, and do it fast.' }],
+    id: 'reed', name: 'la Pattuglia dei Canneti', dx: -9.5, dz: 4.5, kind: 'battle', zone: 'meadow',
+    lines: [
+      { speaker: 'Pattuglia dei Canneti', text: 'Qui nessuno cammina da solo. Torna indietro, e alla svelta.' },
+    ],
   },
   {
-    name: 'the Mesa Watch', x: 26.5, z: 22.5, kind: 'battle', zone: 'stone',
-    lines: [{ speaker: 'Mesa Watch', text: 'You came a long way for a rock. The Sentinel has been waiting longer.' }],
+    id: 'watch', name: 'la Guardia dell\u2019Altipiano', dx: 0, dz: -13.5, kind: 'battle', zone: 'stone',
+    lines: [
+      { speaker: 'Guardia dell\u2019Altipiano', text: 'Sei salito fin quass\u00f9 per una roccia. La Sentinella aspetta da pi\u00f9 tempo di te.' },
+    ],
+  },
+  {
+    id: 'bimba', name: 'la Bambina', anchor: 'child', kind: 'talk',
+    lines: [
+      { speaker: 'Bimba', text: 'Se vai verso la pietra, porta il ghiaccio. Il fuoco non serve a niente, lass\u00f9.' },
+      { speaker: 'Bimba', text: 'Lo dice sempre mio nonno. Poi per\u00f2 non ci va, nessuno ci va.' },
+    ],
+  },
+  {
+    id: 'fabbro', name: 'il Fabbro', anchor: 'smith', kind: 'talk',
+    lines: [
+      { speaker: 'Fabbro Ivo', text: 'Fucine qui non ne ho. Se trovi qualcosa di utile sulla nave, portamelo e vediamo.' },
+      { speaker: 'Fabbro Ivo', text: 'Da quando \u00e8 caduta la Sentinella sull\u2019altipiano, la corrente ha smesso di portare legna. Non so se le due cose c\u2019entrano.' },
+    ],
   },
 ];
 
@@ -126,7 +175,7 @@ export async function createGame({ canvas, uiRoot }) {
   const rng = Math.random;
 
   // ---------------------------------------------------------------- state ---
-  let mode = 'overworld';        // overworld | dialogue | menu | transition | battle
+  let mode = 'title';            // title | overworld | dialogue | menu | transition | battle
   let raf = 0;
   let elapsed = 0;
   let disposed = false;
@@ -148,30 +197,63 @@ export async function createGame({ canvas, uiRoot }) {
   const sky = createSky({ mapSize: MAP.width, sunDir: SUN_DIR });
   sky.lights.sun.intensity = SUN_INTENSITY;
   sky.lights.hemi.intensity = HEMI_INTENSITY;
-  const terrain = createTerrain({ ...MAP, tiles: TILES });
-  // Nothing solid inside 3 units of the spawn or of a marker. Two reasons, both
-  // measured: a 2.4-unit pine in front of the party is a rendering defect the
-  // moment the HUD is up, and the follow chain's slots are anchored to the
-  // leader, so a collider sitting on a slot makes that member slide off it
+  const terrain = createTerrain({ ...MAP, tiles: TILES, shelf: VILLAGE_SITE });
+  // The village is built BEFORE the props scatter, so the scatter can be told to
+  // leave the terrace alone. A pine through a roof is the same defect as a pine
+  // in front of the party: the world was generated without knowing the building
+  // was going to be there.
+  const village = createVillage({ terrain, definitions: VILLAGE, scene: engine.scene });
+
+  /**
+   * Where a marker stands, resolved against the village. `anchor` takes a named
+   * spot from village.json; `dx`/`dz` are offsets from the village centre. Both
+   * are world space by the time this returns, so nothing downstream needs to
+   * know the village exists.
+   */
+  function markerSpot(m) {
+    if (m.anchor) {
+      const a = village.anchors.find((x) => x.id === m.anchor);
+      if (a) return { x: a.x, z: a.z };
+    }
+    const c = village.centre || SPAWN;
+    return { x: c.x + (m.dx || 0), z: c.z + (m.dz || 0) };
+  }
+
+  /** Inside the village the wilderness does not roll encounters. */
+  const inVillage = (p) =>
+    !!village.centre
+    && Math.hypot(p.x - village.centre.x, p.z - village.centre.z) <= (village.safeRadius || 0);
+  const villageSolid = [
+    { x: village.centre?.x ?? SPAWN.x, z: village.centre?.z ?? SPAWN.z, r: (village.radius || 0) + 1.5 },
+  ];
+  // Nothing solid inside 3 units of the spawn, the village or a marker. Two
+  // reasons, both measured: a 2.4-unit pine in front of the party is a rendering
+  // defect the moment the HUD is up, and the follow chain's slots are anchored to
+  // the leader, so a collider sitting on a slot makes that member slide off it
   // forever. On seed 11 that was 3 of 3 follower slots inside a collider.
   const KEEPOUT = 3;
-  const keepOut = [SPAWN, ...MARKERS.map((m) => ({ x: m.x, z: m.z }))]
-    .map((p) => ({ x: p.x, z: p.z, r: KEEPOUT }));
-  const props = createProps({ terrain, definitions: PROPS, density: PROP_DENSITY, seed: 11, keepOut });
+  const markerWorld = MARKERS.map((m) => markerSpot(m));
+  const keepOut = [SPAWN, ...villageSolid, ...markerWorld]
+    .map((p) => ({ x: p.x, z: p.z, r: Math.max(KEEPOUT, p.r || 0) }));
+  const props = createProps({
+    terrain, definitions: PROPS, density: PROP_DENSITY, seed: 11, keepOut, maxCount: PROP_MAX,
+  });
   engine.scene.add(sky.group, terrain.group, props.group);
 
+  // Both colliders, and the village's own first: a building is a much larger
+  // obstacle than a trunk and the player hits it far more often.
+  const colliders = [...village.colliders, ...props.colliders];
   const party = createParty({
-    memberIds: PARTY_IDS, data: ACTORS, terrain, colliders: props.colliders, scene: engine.scene,
+    memberIds: PARTY_IDS, data: ACTORS, terrain, colliders, scene: engine.scene,
   });
 
   /**
    * Spawn with prop clearance. A solid prop pushes a collider and actor.js slides
    * off them, so starting INSIDE one leaves the leader wedged with three of the
    * four directions refused and the game reads as "the controls do not work".
-   * Measured on seed 11: (20.5, 28.5) sits 0.80 from a pine whose effective
-   * radius is 0.91, so only 'left' escapes. Nudge to the nearest clear cell.
+   * Nudge to the nearest clear cell.
    */
-  function clearSpot(x, z) {
+  function clearSpot(x, z, against = colliders) {
     for (let ring = 0; ring <= 4; ring++) {
       for (let dz = -ring; dz <= ring; dz++) {
         for (let dx = -ring; dx <= ring; dx++) {
@@ -179,14 +261,16 @@ export async function createGame({ canvas, uiRoot }) {
           const px = x + dx * 0.5;
           const pz = z + dz * 0.5;
           if (!terrain.isWalkable(px, pz)) continue;
-          if (props.colliders.some((c) => Math.hypot(c.x - px, c.z - pz) < c.r + 0.55)) continue;
+          if (against.some((c) => Math.hypot(c.x - px, c.z - pz) < c.r + 0.55)) continue;
           return { x: px, z: pz };
         }
       }
     }
     return { x, z };
   }
-  const spawn = clearSpot(SPAWN.x, SPAWN.z);
+  // The village road is a walkable terrace, but the well and the houses are not,
+  // so the spawn still goes through the clearance search.
+  const spawn = clearSpot(village.spawn?.x ?? SPAWN.x, village.spawn?.z ?? SPAWN.z);
 
   const allies = PARTY_IDS.map((id) => toCombatant(ACTORS[id], `a:${id}`, 'ally'));
   // The bag: gold and item counts. `ITEMS` is the catalogue (what exists),
@@ -265,7 +349,10 @@ export async function createGame({ canvas, uiRoot }) {
   })();
   const markerGroup = new THREE.Group();
   const markers = MARKERS.map((m, i) => {
-    const spot = clearSpot(m.x, m.z);
+    const at = markerSpot(m);
+    // clearSpot against the VILLAGE colliders too: the elder stands beside the
+    // well, and the marker nudge must not park the talking point inside a house.
+    const spot = clearSpot(at.x, at.z);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: markTex, depthTest: false, transparent: true }));
     sprite.renderOrder = 5;
     sprite.scale.setScalar(0.7);
@@ -373,12 +460,16 @@ export async function createGame({ canvas, uiRoot }) {
       if (won) {
         for (const a of allies) a.currentMP = Math.min(a.maxMP, a.currentMP + 4);
         // The gold used to end in a toast and vanish: items.json prices a
-        // Phoenix Bloom at 120 G and nothing could ever hold a G.
+        // Phoenix Bloom at 120 oro and nothing could ever hold a coin.
         bag.addGold(gold);
-        hud.toast(`Victory — ${loot} EXP, ${gold} G`, 2400);
-        await speakStage();            // a won fight may be what the level wanted
+        hud.toast(`Vittoria — ${loot} EXP, ${gold} oro`, 2400);
+        // A won fight is how the level's battle stages are spent. This used to
+        // call speakStage() directly, which showed the NEXT stage's lines
+        // without ever spending the stage that the fight belonged to — so the
+        // tutorial replayed the same fight forever and never advanced.
+        await levelEvent(EVENTS.BATTLE);
       } else {
-        hud.toast('Defeated — the party wakes at the ledge', 2800);
+        hud.toast('Sconfitta — la squadra si risveglia sul ciglio', 2800);
       }
     }
     await fade(true);
@@ -474,9 +565,12 @@ export async function createGame({ canvas, uiRoot }) {
   async function useMarker() {
     const m = nearestMarker();
     if (!m) return;
-    const wanted = level.stage?.marker === m.name;
+    // Compared by ID, not by name. Names are player-facing text and get
+    // translated; an id does not. Matching on the displayed string meant a
+    // translation silently broke every marker-gated stage.
+    const wanted = level.stage?.marker === m.id;
     // Already used AND the level does not want it now: nothing to say.
-    if (m.used && !wanted) { hud.toast('Nothing left here.'); return; }
+    if (m.used && !wanted) { hud.toast('Qui non c\u2019\u00e8 pi\u00f9 niente.'); return; }
     const firstVisit = !m.used;
     // Consume only on a first visit that the level was not waiting for, or
     // explicitly on a stage that the level just spent.
@@ -485,8 +579,8 @@ export async function createGame({ canvas, uiRoot }) {
     applyHint();                      // the hint is HIDDEN while a dialogue is open
     // Only speak the marker's own lines the first time, or the return trip to
     // Vell would replay the introduction.
-    await dialogue.say(firstVisit ? m.lines : [{ speaker: m.name, text: 'Anything new out there?' }]);
-    // The cache used to PRINT "Gained 3 × Field Tonic" and give the player
+    await dialogue.say(firstVisit ? m.lines : [{ speaker: m.name, text: 'C\u2019\u00e8 qualcosa di nuovo, l\u00e0 fuori?' }]);
+    // The cache used to PRINT "Gained 3 x Field Tonic" and give the player
     // nothing, because no bag existed. `give` is the item table for the marker:
     // adding a pickup is a JSON edit, not a code path. First visit only, or a
     // return trip farms infinite tonics.
@@ -494,13 +588,13 @@ export async function createGame({ canvas, uiRoot }) {
       for (const [id, n] of Object.entries(m.give)) {
         bag.add(id, n);
         const def = ITEMS[id];
-        if (def) hud.toast(`Gained ${n} × ${def.name}`, 2200);
+        if (def) hud.toast(`Ottenuto ${n} \u00d7 ${def.name}`, 2200);
       }
     }
     resetWander(ROLLS_GRACE);
     // A marker the current stage points at is what the level is waiting for.
     // This must run BEFORE the fight: the stage's lines explain the fight.
-    if (wanted) await levelEvent(EVENTS.TALK, m.name);
+    if (wanted) await levelEvent(EVENTS.TALK, m.id);
     if (m.kind === 'battle' && firstVisit) await startEncounter(m.zone);
     mode = 'overworld';
     applyHint();
@@ -518,9 +612,9 @@ export async function createGame({ canvas, uiRoot }) {
       // what to do does not need a hint about the one person standing next to
       // them — they need to know the first step.
       const goal = level.objective;
-      if (goal) text = `◆ ${goal}`;
-      else if (m) text = `E — talk to ${m.name}`;
-      else text = 'WASD walk · E interact · Esc menu · backtick = render scale';
+      if (goal) text = `\u25c6 ${goal}`;
+      else if (m) text = `E \u2014 parla con ${m.name}`;
+      else text = 'WASD per muoverti \u00b7 E per interagire \u00b7 Esc per il menu \u00b7 backtick = scala';
     }
     if (text === hintText) return;     // hud.setHint is a DOM write; skip no-ops
     hintText = text;
@@ -545,24 +639,34 @@ export async function createGame({ canvas, uiRoot }) {
         renderScale: engine.renderScale,
         gold: bag.gold,
         saveState: save.available
-          ? (save.load() ? 'A save exists' : 'No save yet')
-          : 'Saving unavailable in this browser',
+          ? (save.load() ? 'Salvataggio presente' : 'Nessun salvataggio')
+          : 'Salvataggio non disponibile in questo browser',
         onSave: () => {
-          if (!save.available) { hud.toast('This browser will not let the game store anything', 2600); return; }
-          hud.toast(save.save() ? 'Saved' : 'Could not save — storage is full or blocked', 1800);
+          if (!save.available) { hud.toast('Questo browser non permette di salvare', 2600); return; }
+          hud.toast(save.save() ? 'Salvato' : 'Salvataggio non riuscito: memoria piena o bloccata', 1800);
         },
+        onTitle: () => { toTitleRequested = true; },
         onCycleRenderScale: (n) => { engine.setRenderScale(n); return engine.renderScale; },
       },
     );
     hud.setVisible(true);
     mode = 'overworld';
     applyHint();
+    // The menu CLOSING is the event the `items` stage waits for. Firing on open
+    // would put the next stage's dialogue on top of the menu the player is
+    // reading; firing on close lets them read the menu, then hear what is next.
+    if (toTitleRequested) {
+      toTitleRequested = false;
+      await openTitle({ sessionLive: true });
+      return;
+    }
+    if (level.canAdvance(EVENTS.MENU)) await levelEvent(EVENTS.MENU);
   }
 
   function cycleScale() {
     const n = (engine.renderScale % 4) + 1;   // 1 -> 2 -> 3 -> 4 -> 1
     engine.setRenderScale(n);
-    hud.toast(`Render scale ${n} — ${engine.bufferW}×${engine.bufferH} buffer`, 1200);
+    hud.toast(`Scala di rendering ${n} \u2014 buffer ${engine.bufferW}\u00d7${engine.bufferH}`, 1200);
   }
 
   // ----------------------------------------------------------------- loop ---
@@ -660,7 +764,10 @@ export async function createGame({ canvas, uiRoot }) {
       moveLeader(step);
       party.follow(party.leader.position.x, party.leader.position.z, step);
       followCamera();
-      if (walked > nextRoll && !encounterLock) {
+      // The village is a safe zone. A random encounter at the well, three steps
+      // from where the player woke up, reads as the game being broken rather
+      // than as danger — and it would interrupt the tutorial's own stage lines.
+      if (walked > nextRoll && !encounterLock && !inVillage(party.leader.position)) {
         const l = party.leader.position;
         resetWander(ROLLS_MIN + rng() * (ROLLS_MAX - ROLLS_MIN));
         startEncounter(zoneAt(l.x, l.z));
@@ -679,6 +786,7 @@ export async function createGame({ canvas, uiRoot }) {
 
     terrain.update(dt);
     props.update(dt);
+    village.update(dt);
     sky.update(dt, engine.camera);
     // The markers bob and the water scrolls, so an "idle" world is not static on
     // screen — but a screenshot only needs ONE correct frame, not 60 a second.
@@ -687,6 +795,96 @@ export async function createGame({ canvas, uiRoot }) {
   }
 
   // ----------------------------------------------------------------- boot ---
+  // ----------------------------------------------------------------- title ---
+  // The game opens on the title, not on the intro. See ui/title.js for why, but
+  // the short version: the intro is the start of a NEW game, and a returning
+  // player needs a way to say "not that" before it plays.
+  const title = createTitle(uiRoot, INFO);
+  let toTitleRequested = false;
+  let sessionLive = false;
+
+  const titleNote = () => {
+    if (!save.available) return 'Salvataggio non disponibile in questo browser';
+    return save.load() ? 'C\u2019\u00e8 un salvataggio' : 'Nessun salvataggio';
+  };
+
+  /** Show the title until it resolves a real action. Info is handled inside. */
+  async function openTitle() {
+    for (;;) {
+      mode = 'title';
+      hud.setVisible(false);
+      const choice = await title.open({
+        hasSave: save.available && !!save.load(),
+        sessionLive,
+        saveNote: titleNote(),
+      });
+      if (choice === 'save') {
+        hud.setVisible(true);
+        hud.toast(save.save() ? 'Salvato' : 'Salvataggio non riuscito', 1800);
+        sessionLive = true;
+        continue;
+      }
+      return choice;
+    }
+  }
+
+  /** Put the world, the party and the bag back to a brand-new game. */
+  function resetSession() {
+    level.restore({ id: LEVEL1.id, index: 0, complete: false });
+    // `shown` lives on the stage objects, so a reset has to clear it too or the
+    // second playthrough would skip every briefing it "already showed".
+    for (const s of LEVEL1.stages) delete s.shown;
+    bag.clear();
+    for (const a of allies) {
+      a.currentHP = a.maxHP;
+      a.currentMP = a.maxMP;
+      a.boosted = false;
+    }
+    for (const m of markers) m.used = false;
+    for (const m of party.members) {
+      const s = clearSpot(spawn.x, spawn.z - party.members.indexOf(m) * 0.9);
+      m.setPosition(s.x, s.z);
+    }
+    focusX = spawn.x;
+    focusZ = spawn.z;
+    engine.setCameraTarget(spawn.x, terrain.heightAt(spawn.x, spawn.z) + 1.4, spawn.z);
+    syncActors();
+    syncHud();
+  }
+
+  async function enterWorld({ intro = false } = {}) {
+    sessionLive = true;
+    mode = 'overworld';
+    hud.setVisible(true);
+    hintText = null;
+    applyHint();
+    if (intro) {
+      // Chained, not awaited in parallel: speakStage() must run after the last
+      // line closes, or the first briefing types on top of the intro.
+      mode = 'dialogue';
+      applyHint();
+      await dialogue.say(LEVEL1.intro);
+      mode = 'overworld';
+      applyHint();
+      await speakStage();
+    }
+  }
+
+  /**
+   * Run the title loop and start a session. Kept out of the module body so the
+   * first call happens in start(), i.e. after main.js has removed #boot — the
+   * title must not open behind the boot overlay.
+   */
+  async function boot() {
+    const choice = await openTitle();
+    if (choice === 'continue' && restore()) { await enterWorld({ intro: false }); return; }
+    if (choice === 'continue') hud.toast('Salvataggio illeggibile: nuova partita', 2400);
+    resetSession();
+    await enterWorld({ intro: true });
+  }
+
+  // Party parked at the spawn before anything runs, so a screenshot taken before
+  // the title resolves is of the village and not of the map origin.
   party.members.forEach((m, i) => {
     const s = clearSpot(spawn.x, spawn.z - i * 0.9);   // trail out of the clear cells
     m.setPosition(s.x, s.z);
@@ -721,22 +919,13 @@ export async function createGame({ canvas, uiRoot }) {
     }
     save.apply(data);
     if (level.isComplete) {
-      hud.toast(LEVEL1.progress?.completeText || 'Area complete — progress restored', 3000);
+      hud.toast(LEVEL1.progress?.completeText || 'Area completata: progressi ripristinati', 3000);
     } else {
-      hud.toast('Progress restored', 2000);
+      hud.toast('Progressi ripristinati', 2000);
     }
     syncActors();
     syncHud();
     return true;
-  }
-  const restored = restore();
-  // The opening monologue plays only for a game that was NOT resumed. On a
-  // resume it would re-teach walking to a player who has already walked, and on
-  // a completed area it would replay the opening of a finished story.
-  if (!restored && !level.isComplete) {
-    mode = 'dialogue';
-    applyHint();
-    dialogue.say(LEVEL1.intro).then(() => { mode = 'overworld'; applyHint(); speakStage(); });
   }
 
   const onResize = () => engine.resize();
@@ -766,7 +955,10 @@ export async function createGame({ canvas, uiRoot }) {
     },
     setPost: (p) => engine.setPostParams(p),
     scale: (n) => engine.setRenderScale(n),
-    colliders: props.colliders,
+    // BOTH sets, because this is what the party actually collides with — the
+    // blocked-ground measurement is meaningless if it only sees the props and
+    // then walks into a house.
+    colliders,
     input,
     // QA needs to build world-space vectors to project sprite bounding boxes
     // into screen space. Exposing the module, not a wrapper.
@@ -776,6 +968,13 @@ export async function createGame({ canvas, uiRoot }) {
     // are questions a screenshot cannot answer.
     leaderPos: () => [party.leader.position.x, party.leader.position.z],
     walkable: (x, z) => terrain.isWalkable(x, z),
+    // Height and tile probes. The village is placed by SEARCHING the terrain for
+    // a flat walkable patch (world/village.js) rather than by a hardcoded
+    // coordinate, so the placement survives a seed or a map-size change; these
+    // two are what make that search possible from outside the world layer.
+    heightAt: (x, z) => terrain.heightAt(x, z),
+    tileAt: (x, z) => terrain.tileAt(x, z),
+    terrainBounds: terrain.bounds,
     party,
     encounter: (zone, ids) => startEncounter(zone || zoneAt(party.leader.position.x, party.leader.position.z), ids),
     // Progression + inventory, for the same reason the rest of this handle
@@ -793,6 +992,30 @@ export async function createGame({ canvas, uiRoot }) {
     save: () => save.save(),
     loadSave: () => { const d = save.load(); return d ? save.snapshot() : null; },
     hasSave: () => !!save.load(),
+    // The title and the village, so the harness can drive the start screen the
+    // way a player does and can assert where the village actually landed.
+    get titleState() {
+      return {
+        open: title.isOpen, view: title.view, selection: title.selection,
+        hasSave: save.available && !!save.load(), sessionLive,
+      };
+    },
+    get village() {
+      return {
+        name: village.name,
+        centre: village.centre,
+        radius: village.radius,
+        safeRadius: village.safeRadius,
+        anchors: village.anchors,
+        pieces: village.layout.length,
+        colliders: village.colliders.length,
+        shelf: village.shelf,
+      };
+    },
+    get markers() {
+      return markers.map((m) => ({ id: m.id, name: m.name, x: +m.x.toFixed(2), z: +m.z.toFixed(2), kind: m.kind, used: m.used }));
+    },
+    inVillage: (x, z) => inVillage({ x, z }),
     // Teleport is a QA affordance, not a cheat hook for the game: the harness
     // has to reach the cache and the mesa without walking there, and walking
     // there means rolling random encounters that make the run non-deterministic.
@@ -811,6 +1034,10 @@ export async function createGame({ canvas, uiRoot }) {
 
   function start() {
     if (!raf) raf = requestAnimationFrame(frame);
+    // The title opens HERE, not in the module body: main.js removes #boot after
+    // start() resolves, and a title screen rendered behind the boot overlay is a
+    // black screen with a menu nobody can see.
+    boot();
     return Promise.resolve();
   }
 
@@ -823,12 +1050,14 @@ export async function createGame({ canvas, uiRoot }) {
     stage.dispose();
     party.dispose();
     popY.clear();
+    village.dispose();
     props.dispose();
     terrain.dispose();
     sky.dispose();
     hud.dispose();
     dialogue.dispose();
     menu.dispose();
+    title.dispose();
     for (const m of markers) m.sprite.material.dispose();
     markTex.dispose();
     tufts.geo.dispose();

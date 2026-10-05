@@ -37,7 +37,7 @@ export function createHud(root) {
         '<div class="hud-name"></div>' +
         '<div class="hud-bar"><i class="hud-fill"></i></div>' +
         '<div class="hud-bar"><i class="hud-fill"></i></div>' +
-        '<div class="hud-chip" hidden>BOOSTED</div>' +
+        '<div class="hud-chip" hidden>POTENZIATO</div>' +
       '</div>';
     p.ui = {
       face: p.querySelector('.hud-face'),

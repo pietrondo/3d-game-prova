@@ -50,6 +50,7 @@ function makeWaterTexture() {
 
 export function createTerrain({
   width = 40, depth = 40, tileSize = 1, seed = 1337, heightScale = 3.2, tiles = {}, chunkSize = 8,
+  shelf = null,
 } = {}) {
   const TILES = tiles || {};
   const td = (id) => TILES[id] || FALLBACK_TILE;
@@ -91,6 +92,62 @@ export function createTerrain({
     }
   }
 
+  // ------------------------------------------------------------ village shelf
+  // A LEVEL TERRACE, and the reason it is a terrain feature rather than a
+  // village one: the island is a radial cone whose only flat ground is the mesa
+  // top (measured: exactly ONE disc of radius 6 has relief under 0.6, and it is
+  // the plateau). A village needs flat ground, so the ground is prepared for it
+  // — here, before the tile pass and before the mesh, so heightAt() and the
+  // merged surface both see the same terrace.
+  //
+  // Placement is NORMALISED, not in absolute units: `angle` is the direction
+  // from the island centre and `at` is a fraction of the island radius, so the
+  // shelf follows the island when the map size or the seed changes instead of
+  // ending up in the sea. `SHORE` lives in this file and stays the single source
+  // of truth for how big the island is.
+  //
+  // The level is the DISC MEAN of the natural height, not a constant: a terrace
+  // carved at a fixed Y would float above the terrain on one seed and sink into
+  // the water on the next.
+  let shelfInfo = null;
+  if (shelf) {
+    const a = Number.isFinite(shelf.angle) ? shelf.angle : Math.PI / 2;
+    const at = Number.isFinite(shelf.at) ? shelf.at : 0.6;
+    const r = Math.max(1, Number.isFinite(shelf.r) ? shelf.r : 6);
+    const feather = Math.max(1, Number.isFinite(shelf.feather) ? shelf.feather : r * 0.45);
+    const sx = cx + Math.cos(a) * R * at;
+    const sz = cz + Math.sin(a) * R * at;
+
+    const touched = [];
+    let sum = 0, n = 0;
+    for (let tz = 0; tz < depth; tz++) {
+      for (let tx = 0; tx < width; tx++) {
+        const d = Math.hypot(tx - sx, tz - sz);
+        if (d > r) continue;
+        const i = cellIndex(tx, tz);
+        touched.push({ i, d });
+        sum += height[i];
+        n++;
+      }
+    }
+    const y = n ? sum / n : 0;
+    for (const { i, d } of touched) {
+      const w = d <= r - feather ? 1 : Math.max(0, (r - d) / feather);
+      height[i] = height[i] + (y - height[i]) * w;
+      // Re-quantise the touched cells only, so the flat core merges into a
+      // handful of greedy rectangles instead of a field of slivers.
+      height[i] = Math.round(height[i] / step) * step;
+      // Classify as meadow. Without this, a cell the terrace lifted out of the
+      // sea would keep its `water` id: height says land, the tile says sea, and
+      // the cell is drawn as water while heightAt() puts an actor on the grass.
+      ramp[i] = w >= 1 ? 0.3 : Math.max(ramp[i], 0.22);
+    }
+    shelfInfo = {
+      x: +sx.toFixed(2), z: +sz.toFixed(2), y: Math.round(y / step) * step,
+      r, inner: +Math.max(1, r - feather).toFixed(2),
+    };
+  }
+
   // pass 2 — tile type, read off the quantised grid so the cliff ring is real
   for (let tz = 0; tz < depth; tz++) {
     for (let tx = 0; tx < width; tx++) {
@@ -113,7 +170,6 @@ export function createTerrain({
       ids[i] = id;
     }
   }
-
   // ------------------------------------------------------------- height field
   const cellH = (tx, tz) => (inBounds(tx, tz) ? height[cellIndex(tx, tz)] : height[cellIndex(clamp(tx, 0, width - 1), clamp(tz, 0, depth - 1))]);
 
@@ -382,5 +438,12 @@ export function createTerrain({
     group.clear();
   }
 
-  return { group, heightAt, normalYAt, tileAt, isWalkable, bounds, worldToTile: (v) => v / tileSize, update, dispose };
+  return {
+    group, heightAt, normalYAt, tileAt, isWalkable, bounds,
+    // The resolved terrace, or null. game.js needs `x`/`z` to spawn the party in
+    // the village and to place the markers relative to it, and it must be the
+    // RESOLVED position (the normalised request went through SHORE and R here).
+    shelf: shelfInfo,
+    worldToTile: (v) => v / tileSize, update, dispose,
+  };
 }
