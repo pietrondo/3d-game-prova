@@ -59,6 +59,7 @@ import { createTitle } from './ui/title.js';
 import { createShop } from './ui/shop.js';
 import { createArea } from './game/area.js';
 import { AREAS, START_AREA } from './game/areas.js';
+import { installQaHandle } from './game/qa.js';
 import './battle/battle.css';
 
 import PROPS from './data/props.json';
@@ -1064,13 +1065,41 @@ export async function createGame({ canvas, uiRoot }) {
   const onResize = () => engine.resize();
   window.addEventListener('resize', onResize);
 
-  // QA handle. The render is not unit-tested (design.md: QA reviews it by
-  // screenshot), so a screenshot pass needs a way to ask what the scene contains
-  // without guessing from pixels.
-  window.__hd2d = {
-    engine,
-    scene: engine.scene,
-    get state() {
+  // QA handle. The render is not unit-tested, so a screenshot pass needs a way to
+  // ask what the scene contains without guessing from pixels.
+  //
+  // The view itself lives in game/qa.js. What is passed here is a table of
+  // THUNKS, and that is load-bearing rather than stylistic: `enterArea` rebinds
+  // almost all of it, so a captured VALUE would keep answering with the world the
+  // player has already left — a bug that only appears after a transition and looks
+  // like the harness being flaky.
+  installQaHandle({
+    engine: () => engine,
+    input: () => input,
+    THREE,
+    colliders: () => colliders,
+    terrain: () => terrain,
+    party: () => party,
+    leaderPos: () => [party.leader.position.x, party.leader.position.z],
+    encounter: (zone, ids) =>
+      startEncounter(zone || zoneAt(party.leader.position.x, party.leader.position.z), ids),
+    inVillage: (x, z) => inVillage({ x, z }),
+    // Teleport is a QA affordance, not a cheat hook for the game: the harness has
+    // to reach the cache and the mesa without walking there, and walking there
+    // means rolling random encounters that make the run non-deterministic.
+    // clearSpot first, or the leader lands inside a prop and slide() leaves it
+    // wedged with every heading refused.
+    teleport: (x, z) => {
+      const s = clearSpot(x, z);
+      party.leader.setPosition(s.x, s.z);
+      party.follow(s.x, s.z, 0.016);
+      followLeader();
+      followCamera();
+      return [s.x, s.z];
+    },
+    // The state read stays here: it touches ten closures and moving it would only
+    // give the handle a second way to be wrong.
+    state: () => {
       const l = party.leader.position;
       const p = stage.promptState;
       return {
@@ -1086,104 +1115,44 @@ export async function createGame({ canvas, uiRoot }) {
         sceneChildren: engine.scene.children.length,
       };
     },
-    setPost: (p) => engine.setPostParams(p),
-    scale: (n) => engine.setRenderScale(n),
-    // BOTH sets, because this is what the party actually collides with — the
-    // blocked-ground measurement is meaningless if it only sees the props and
-    // then walks into a house.
-    colliders,
-    input,
-    // QA needs to build world-space vectors to project sprite bounding boxes
-    // into screen space. Exposing the module, not a wrapper.
-    THREE,
-    // Read-only world probes. QA needs these to measure blocked ground and to
-    // compare the walked counter against the distance actually travelled; both
-    // are questions a screenshot cannot answer.
-    leaderPos: () => [party.leader.position.x, party.leader.position.z],
-    walkable: (x, z) => terrain.isWalkable(x, z),
-    // Height and tile probes. The village is placed by SEARCHING the terrain for
-    // a flat walkable patch (world/village.js) rather than by a hardcoded
-    // coordinate, so the placement survives a seed or a map-size change; these
-    // two are what make that search possible from outside the world layer.
-    heightAt: (x, z) => terrain.heightAt(x, z),
-    tileAt: (x, z) => terrain.tileAt(x, z),
-    terrainBounds: terrain.bounds,
-    party,
-    encounter: (zone, ids) => startEncounter(zone || zoneAt(party.leader.position.x, party.leader.position.z), ids),
-    // Progression + inventory, for the same reason the rest of this handle
-    // exists: these are questions a screenshot cannot answer. "Did the tutorial
-    // advance" and "did the tonics actually land in the bag" are both invisible
-    // on screen, and both were previously broken in ways that threw nothing.
-    get level() {
+    levelState: () => {
       const s = level.stage;
       return {
         id: LEVEL.id, areaId: area.id, index: level.index, complete: level.isComplete,
         stage: s ? s.id : null, objective: level.objective,
       };
     },
-    // Which world is loaded, and what it calls itself. A transition is otherwise
-    // invisible to the harness: the handle would look the same in both areas.
-    get area() {
-      return {
-        id: area.id,
-        name: area.name,
-        map: area.def.map,
-        spawn: area.spawn,
-        colliders: area.colliders.length,
-        props: area.props.count,
-      };
-    },
-    get bag() { return bag.snapshot(); },
+    // Which world is loaded. A transition is otherwise invisible to the harness:
+    // the handle would look identical in both areas.
+    areaState: () => ({
+      id: area.id, name: area.name, map: area.def.map, spawn: area.spawn,
+      colliders: area.colliders.length, props: area.props.count,
+    }),
+    bag: () => bag.snapshot(),
     save: () => save.save(),
     loadSave: () => { const d = save.load(); return d ? save.snapshot() : null; },
     hasSave: () => !!save.load(),
-    // The title and the village, so the harness can drive the start screen the
-    // way a player does and can assert where the village actually landed.
-    get titleState() {
-      return {
-        open: title.isOpen, view: title.view, selection: title.selection,
-        hasSave: save.available && !!save.load(), sessionLive,
-      };
-    },
-    get village() {
-      return {
-        name: village.name,
-        centre: village.centre,
-        radius: village.radius,
-        safeRadius: village.safeRadius,
-        // The spawn the village chose, which is the one place that is guaranteed
-        // to clear the party's own wedge footprint. A measurement that stands the
-        // party anywhere else is measuring a place the game never promised would
-        // hold a formation.
-        spawn: village.spawn,
-        anchors: village.anchors,
-        pieces: village.layout.length,
-        colliders: village.colliders.length,
-        shelf: village.shelf,
-      };
-    },
-    get markers() {
-      return markers.map((m) => ({ id: m.id, name: m.name, x: +m.x.toFixed(2), z: +m.z.toFixed(2), kind: m.kind, used: m.used }));
-    },
-    inVillage: (x, z) => inVillage({ x, z }),
-    // The counter, so the harness can assert a purchase actually happened rather
-    // than reading a toast off a screenshot.
-    get shopState() { return shop.state; },
-    // Teleport is a QA affordance, not a cheat hook for the game: the harness
-    // has to reach the cache and the mesa without walking there, and walking
-    // there means rolling random encounters that make the run non-deterministic.
-    // clearSpot first, or the leader lands inside a prop and slide() leaves it
-    // wedged with every heading refused.
-    teleport: (x, z) => {
-      const s = clearSpot(x, z);
-      party.leader.setPosition(s.x, s.z);
-      party.follow(s.x, s.z, 0.016);
-      followLeader();
-      followCamera();
-      return [s.x, s.z];
-    },
+    titleState: () => ({
+      open: title.isOpen, view: title.view, selection: title.selection,
+      hasSave: save.available && !!save.load(), sessionLive,
+    }),
+    villageState: () => ({
+      name: village.name, centre: village.centre, radius: village.radius,
+      safeRadius: village.safeRadius,
+      // The spawn the village chose: the one place guaranteed to clear the party's
+      // own wedge footprint. Measuring the party anywhere else measures a place
+      // the game never promised would hold a formation.
+      spawn: village.spawn,
+      anchors: village.anchors, pieces: village.layout.length,
+      colliders: village.colliders.length, shelf: village.shelf,
+    }),
+    markersState: () => markers.map((m) => ({
+      id: m.id, name: m.name, x: +m.x.toFixed(2), z: +m.z.toFixed(2),
+      kind: m.kind, used: m.used,
+    })),
+    shopState: () => shop.state,
     dispose,
-  };
+  });
 
   function start() {
     if (!raf) raf = requestAnimationFrame(frame);

@@ -33,10 +33,17 @@ print are unchanged (party overlap, wilderness blocked, walk error).
 to break something silently: a module that captured `terrain` at construction
 keeps working until the first transition, and then draws the wrong world.
 
-## Step 1 — `game/qa.js` (the `window.__hd2d` handle)
+## Step 1 — `game/qa.js` (the `window.__hd2d` handle) — **DONE**
 
-**~130 lines out.** Safest: it is a read-only view, no logic, and both passes
-exercise it completely — if the shape or a value is wrong, they fail immediately.
+**Measured result: −32 lines net, not the ~130 estimated.** Moving the view out
+removes 120 lines but the `ctx` table of thunks costs 88, and `state` plus the two
+behaviours (`teleport`, `encounter`) stay in the director by design. The estimate
+below the fold is corrected so the remaining steps are not planned against a
+wish.
+
+What it did buy: the only test-only surface in the project is now one file, and
+the extraction proved the thunk rule — both headless passes stayed green, which is
+the evidence that the handle still reports the LIVE area rather than a copy.
 
 ```
 export function installQaHandle(ctx) { window.__hd2d = { ... }; return window.__hd2d; }
@@ -91,6 +98,18 @@ the wander counters (`walked`, `nextRoll`, `resetWander`, `ROLLS_*`).
 After steps 1–4 `game.js` should be around 500 lines: the state, the builders, the
 level driver, `enterArea`, boot and `frame`. That is one responsibility — the
 director — and it fits.
+
+**Corrected after step 1:** those four steps will not reach 500. Step 1 moved 120
+lines and netted 32, because a ctx table of thunks and a preserved `state` cost
+most of the win. Steps 2 and 3 (rustle, camera rig) are genuinely self-contained
+and should net most of their length; step 4 is the big one and should net well
+over half of 180. Realistic landing point is **~650–700**, which is close enough
+to the rule to be worth doing and far enough that the honest thing to say is: the
+rule wants 600, and the last stretch will need a fifth extraction — probably the
+wander counters and `moveLeader` (step 5), pulled up to run before step 4.
+
+Do not chase the number by collapsing `let` bindings into one object. That is the
+change that would make a transition silently wrong.
 
 ## What NOT to do
 
