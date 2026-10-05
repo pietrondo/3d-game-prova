@@ -1,0 +1,66 @@
+[
+  {
+    "id": "vell",
+    "name": "Vell",
+    "anchor": "vell",
+    "kind": "talk",
+    "lines": [
+      { "speaker": "Vell la Cartografa", "text": "Ti sei svegliato. Credevo che la corrente ti avesse preso come gli altri." },
+      { "speaker": "Vell la Cartografa", "text": "La nave non risponde da tre giorni. Io disegno quest'isola da prima che affondasse, e non l'ho mai finita." }
+    ]
+  },
+  {
+    "id": "cache",
+    "name": "la Cassa Arrugginita",
+    "dx": 7.5,
+    "dz": 2.0,
+    "kind": "item",
+    "give": { "tonic": 3 },
+    "lines": [
+      { "speaker": "Cassa Arrugginita", "text": "Qualcuno l'ha incastrata sotto la lastra e non \u00e8 pi\u00f9 tornato a prenderla." },
+      { "speaker": "Olrik", "text": "Tonici da campo. Abbastanza per farci respirare tutti e quattro. Li prendo." }
+    ]
+  },
+  {
+    "id": "reed",
+    "name": "la Pattuglia dei Canneti",
+    "dx": -9.5,
+    "dz": 4.5,
+    "kind": "battle",
+    "zone": "meadow",
+    "lines": [
+      { "speaker": "Pattuglia dei Canneti", "text": "Qui nessuno cammina da solo. Torna indietro, e alla svelta." }
+    ]
+  },
+  {
+    "id": "watch",
+    "name": "la Guardia dell'Altipiano",
+    "dx": 0,
+    "dz": -13.5,
+    "kind": "battle",
+    "zone": "stone",
+    "lines": [
+      { "speaker": "Guardia dell'Altipiano", "text": "Sei salito fin quass\u00f9 per una roccia. La Sentinella aspetta da pi\u00f9 tempo di te." }
+    ]
+  },
+  {
+    "id": "bimba",
+    "name": "la Bambina",
+    "anchor": "child",
+    "kind": "talk",
+    "lines": [
+      { "speaker": "Bimba", "text": "Se vai verso la pietra, porta il ghiaccio. Il fuoco non serve a niente, lass\u00f9." },
+      { "speaker": "Bimba", "text": "Lo dice sempre mio nonno. Poi per\u00f2 non ci va, nessuno ci va." }
+    ]
+  },
+  {
+    "id": "fabbro",
+    "name": "il Fabbro",
+    "anchor": "smith",
+    "kind": "talk",
+    "lines": [
+      { "speaker": "Fabbro Ivo", "text": "Fucine qui non ne ho. Se trovi qualcosa di utile sulla nave, portamelo e vediamo." },
+      { "speaker": "Fabbro Ivo", "text": "Da quando \u00e8 caduta la Sentinella sull'altipiano, la corrente ha smesso di portare legna. Non so se le due cose c'entrano." }
+    ]
+  }
+]

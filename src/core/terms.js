@@ -36,6 +36,21 @@ export const ITEM_KIND_IT = {
 };
 
 /**
+ * `weaponType` on actors and skills. It reached the screen untranslated in two
+ * places — the Attack row's subtitle and the menu's element chip for a skill with
+ * `element: null` — so a player read "sword" and "axe" in an otherwise Italian
+ * game. Same rule as the rest of this file: the data key is English, the display
+ * is not.
+ */
+export const WEAPON_TYPE_IT = {
+  sword: 'spada',
+  axe: 'ascia',
+  staff: 'bastone',
+  bow: 'arco',
+  dagger: 'pugnale',
+};
+
+/**
  * Look a data key up in a display map. Falls back to `alt` and then to the key
  * itself, so an untranslated value shows as its raw key rather than as a blank
  * row — a blank row hides the bug, a raw key shows it.

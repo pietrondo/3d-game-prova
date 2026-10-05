@@ -21,32 +21,55 @@ carved terrace. Measured after that change:
 
 | metric | round 3 | round 4 | note |
 |---|---|---|---|
-| party overlap | 13% | **13%** | unchanged, and this time it was checked against a settled formation |
-| blocked ground | 2.3% | **9.5% wilderness** | the sample moved OUT of the village — houses are obstacles by design, so the old number was measuring the wrong place |
-| walked counter error | 0.7% | **2.9%** | within tolerance |
+| party overlap | 13% | **16%** | settled formation, party sprites only; the 16% is the leader↔tail pair, whose boxes still touch by ~12px |
+| blocked ground | 2.3% | **20%** | and see below: the 2.3% was never a wilderness reading |
+| walked counter error | 0.7% | **0.6%** | within tolerance |
 | page errors | none | **none** | |
+| props | 499 | **369** | density 0.32 → 0.16 |
 
-Two things worth recording, because both were nearly filed as false positives:
+### The 2.3% was measured on the mesa top and called "ground"
 
-**The 9.5% is not a regression.** The target is under 25% for the WILDERNESS.
-Measuring inside the village returned 33.6% and that is correct behaviour: a
-village is full of things you cannot walk through. The harness now samples outside
-it and reports the village's own obstacle count separately.
+For three rounds the blocked-ground target was "under 25%" and the reading was
+2.3%. Both were wrong to trust. The sample was taken around the leader at SPAWN,
+and the spawn sat on the mesa top — the flattest, most open, most keepOut-protected
+ground on the island. It was a measurement of the one place that is guaranteed
+clear, labelled as if it described the island.
 
-**The overlap was a real bug wearing a false-positive's clothes.** The plan was to
-make the measurement smarter — wait for the formation to settle, and count party
-members only. That was done, and the number went UP, to 66%. The stable
-measurement then showed what the noisy one had been hiding: the party's tail was
-permanently stuck. The spawn put the leader at (31.5, 47.76) and the signpost
-collider at (31.5, 47.93), and the tail's slot was behind it. `actor.js` collides
-by sliding, so the tail pressed into the post forever and never reached its slot.
-The spawn now clears the party's whole footprint, not just its centre, and the
-number fell to 13%.
+Measured where wilderness actually is — a 3-unit disc with 95% of it on walkable
+land — the same island read **36%**. That is the original complaint from round 1
+("walking feels like wading through a wood"), never actually retested because the
+number said otherwise. Prop density is now 0.16 and the reading is **20%**.
 
-The lesson is the uncomfortable one: **a measurement is not proven wrong by
-disliking its answer.** Round 3's overlap number was wrong for a real reason (a
-misplaced box and the quad instead of the ink). This time the fix to the
-measurement made it MORE accurate and it reported a worse, genuine defect.
+Two measurement bugs had to be fixed before that number was trustworthy, and both
+are the same class:
+
+- the wilderness search walked **±x only**, so the sampled spot depended on which
+  axis left the village fastest and two runs could measure two places;
+- taking the **first** walkable point landed on a coastal strip 21.9 units from
+  the island centre, past the shore at 18.7, where almost the whole disc is water.
+  The walkable remainder is beach dotted with props, so "blocked" read 34.6% — a
+  fact about the sample point, not the island.
+
+The search now sweeps eight directions and requires the disc to be **mostly land**
+before it accepts a spot, and the chosen coordinates go into the report so a later
+round can be compared against them rather than against a memory.
+
+### The overlap measurement now names the pair
+
+`worst pairwise box overlap: 16%` used to be unattributable — no way to tell a
+real residual overlap from an arithmetic slip, and no way to compare one round to
+the next. It now reports which two members produced it and by how many pixels:
+`m0(30.08,50.48)<->m3(30.08,48.43) ox=53px oy=12px`. That 12px is the intrinsic
+cost of the wedge's 2.05-unit tail depth at this camera pitch, not a defect.
+
+### The pixel pass can now fail
+
+`tests/qa.py` had no assertion and no `sys.exit` — it printed numbers and exited 0
+whatever they said, so this document was a report rather than a test result. It now
+ends with a verdict block that fails the run on: a party that never settles, a
+follower stuck out of reach, overlap ≥ 25%, wilderness blocked ≥ 25%, a walk
+counter off by ≥ 10%, a command list with no rows, a fight that cannot be finished,
+or any page error.
 
 ## Verdict — rounds 1 to 3, still standing
 
@@ -179,7 +202,7 @@ removing the dither, which costs more than the chunkiness gains.
 - the battle state machine advances round to round under scripted input
   (round 1 → 2 with no stalls), and `sceneChildren` is stable at 10 across
   rounds, so nothing leaks per round
-- 108/108 unit tests green, `npm run build` green
+- 148/148 unit tests green (was 108 when this line was written), `npm run build` green
 
 ## The harness itself
 

@@ -17,9 +17,8 @@
  * (measured: exactly one radius-6 disc has relief under 0.6). A village needs
  * flat ground, so the GROUND IS PREPARED — `createTerrain({ shelf })` carves a
  * terrace and this module builds on the resolved `terrain.shelf`. That ordering
- * matters: the terrace must exist before props are scattered, or the scatter
- * would keep the flat ground bare only by luck. game.js passes `keepOut` for the
- * village, exactly as it does for the spawn and the markers.
+ * matters: the terrace must exist before props are scattered, so game.js puts a
+ * `keepOut` disc over the village and the scatter leaves the terrace alone.
  *
  * ## Layout is data
  *
@@ -50,7 +49,7 @@ export function boxColliders(x, z, w, d) {
   return out;
 }
 
-export function createVillage({ terrain, definitions = {}, keepOut = [], scene = null } = {}) {
+export function createVillage({ terrain, definitions = {}, scene = null } = {}) {
   const group = new THREE.Group();
   group.name = 'village';
   const colliders = [];
@@ -208,10 +207,7 @@ export function createVillage({ terrain, definitions = {}, keepOut = [], scene =
   for (const it of layout) {
     const build = builders[it.type];
     if (!build) continue;
-    // `keepOut` is in WORLD space and the layout offsets are not, so the offset
-    // is applied here rather than asking the caller to pre-shift.
     const wx = shelf.x + it.x, wz = shelf.z + it.z;
-    if (keepOut.some((k) => Math.hypot(k.x - wx, k.z - wz) < k.r)) continue;
     // The terrace is flat only inside `shelf.inner`; past that it feathers back
     // to the natural terrain, so every piece asks the terrain for its own y.
     const wy = terrain.heightAt(wx, wz);
@@ -268,24 +264,33 @@ export function createVillage({ terrain, definitions = {}, keepOut = [], scene =
    * plus an actor's radius; falling back to the centre keeps a village with a
    * pathological layout playable instead of spawning the party inside a wall.
    */
-  function clearSpawn(needed = 3.0) {
+  function clearSpawn(needed = 2.2) {
     const clearance = (x, z) => {
       let min = Infinity;
       for (const c of colliders) min = Math.min(min, Math.hypot(c.x - x, c.z - z) - c.r);
       return min;
     };
     const SOUTH = Math.PI / 2;
-    for (let d = 0; d <= shelf.inner; d += 0.4) {
-      for (let i = 0; i < 8; i++) {
+    let best = null;
+    for (let d = 0; d <= shelf.inner; d += 0.25) {
+      for (let i = 0; i < 12; i++) {
         // Sweep outward starting due south, then alternating east and west, so
         // the party starts facing the island with the village at its back.
-        const a = SOUTH + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 8);
+        const a = SOUTH + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 12);
         const x = shelf.x + Math.cos(a) * d;
         const z = shelf.z + Math.sin(a) * d;
-        if (clearance(x, z) >= needed) return { x: +x.toFixed(2), z: +z.toFixed(2) };
+        const cl = clearance(x, z);
+        if (cl >= needed) return { x: +x.toFixed(2), z: +z.toFixed(2), clearance: +cl.toFixed(2) };
+        if (!best || cl > best.clearance) best = { x, z, clearance: cl };
       }
     }
-    return { x: shelf.x, z: shelf.z };
+    // Nothing is fully open: take the MOST open spot found. An earlier version
+    // returned the village centre here, which is where the well stands — so the
+    // "fallback" reliably dropped the party inside a collider, and the search was
+    // written with a threshold (3.0) no dense village can ever meet, making it a
+    // function that only ever fell back. Maximising instead of thresholding means
+    // the result is never deliberately worse than the best available.
+    return { x: +best.x.toFixed(2), z: +best.z.toFixed(2), clearance: +best.clearance.toFixed(2) };
   }
 
   if (scene) scene.add(group);
@@ -300,8 +305,11 @@ export function createVillage({ terrain, definitions = {}, keepOut = [], scene =
     centre: { x: shelf.x, z: shelf.z },
     radius: shelf.r,
     // Inside this radius the wilderness does not roll encounters. A village that
-    // ambushes you at the well is not a village.
-    safeRadius: shelf.inner,
+    // ambushes you at the well is not a village. This is `shelf.r`, NOT
+    // `shelf.inner`: the houses sit at ~3.4 units and the lanterns at 4.1, so a
+    // safe radius of the flat core alone (3.1) left every doorway in the
+    // wilderness — the exact failure this comment says it prevents.
+    safeRadius: shelf.r,
     shelf,
     spawn: clearSpawn(),
     update() {},

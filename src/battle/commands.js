@@ -18,7 +18,7 @@
  */
 
 import { multiplier } from '../combat/weaknesses.js';
-import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, tr } from '../core/terms.js';
+import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, WEAPON_TYPE_IT, tr } from '../core/terms.js';
 
 /** @param {string} tag @param {*} text @param {string} [cls] */
 export const el = (tag, text, cls) => {
@@ -138,7 +138,7 @@ export function createCommander({ prompt, skills, rng, chooseEnemyCommand, bag =
     const known = ally.skills.map((id) => ({ id, def: skills[id] })).filter((s) => s.def);
     const carried = usableItems(battle);
     const pick = await prompt.choose(ally.name, [
-      { label: 'Attacco', sub: ally.weaponType, value: { type: 'attack', def: null } },
+      { label: 'Attacco', sub: tr(WEAPON_TYPE_IT, ally.weaponType), value: { type: 'attack', def: null } },
       ...known.map((s) => ({
         label: s.def.name,
         sub: s.def.mp

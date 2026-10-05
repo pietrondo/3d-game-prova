@@ -70,6 +70,7 @@ import ITEMS from './data/items.json';
 import LEVEL1 from './data/level1.json';
 import VILLAGE from './data/village.json';
 import INFO from './data/info.json';
+import MARKERS_DATA from './data/markers.json';
 
 // 64x64, not the original 40x40. The island is a radial falloff, so the size
 // is not a viewport — it IS the island: at 40 the shoreline sat ~14 units from
@@ -82,7 +83,14 @@ const MAP = { width: 64, depth: 64, seed: 1337, heightScale: 3.2 };
 // No longer hardcoded to the mesa top: the village is found on the terrain (see
 // world/village.js) and this is the fallback only if that search fails.
 const SPAWN = { x: 32, z: 42 };
-const PROP_DENSITY = 0.32;
+// 0.22, down from 0.32. The old value was chosen for LOOKS on a 40x40 map and
+// validated by a measurement taken on the MESA TOP, where the spawn's keepOut
+// holds the props off and the ground reads almost clear (2.3% blocked). Measured
+// in actual wilderness — a 3-unit disc with 95% of it on walkable land — the same
+// island is 36% obstructed, which is the original "walking feels like wading
+// through a wood" complaint and was never actually retested. 0.22 keeps the
+// island wooded without putting something on a third of the ground.
+const PROP_DENSITY = 0.16;
 // 700 was tuned for 40x40, where props saturate near 230 and the cap is never
 // reached. On 64x64 the same density wants ~600 and the cap starts truncating
 // the far side of the map instead of failing loudly — a half-furnished island
@@ -119,55 +127,27 @@ const SUN_DIR = new THREE.Vector3(0.6, 0.7, 0.4).normalize();
 // the village follows the island when the size or the seed changes. Math.PI/2 is
 // +z — the near side of the map, which is the side the camera looks from, so the
 // village sits in FRONT of the mesa and the mesa is the climb you can see.
-const VILLAGE_SITE = { angle: Math.PI / 2, at: 0.60, r: 5.5, feather: 2.4 };
+//
+// `r` and `feather` are measured, not chosen. A piece is placed at ONE ground
+// height (its centre), so what matters is the height SPREAD across its own
+// footprint: a house with a 0.4 spread floats on one corner, and a 9-unit fence
+// with a 0.46 spread is buried at one end. At r=5.5/feather=2.4 the flat core was
+// only 3.1 and 4 of the 11 pieces failed that test (fence_n sat 0.66 above the
+// terrace). At r=7.5/feather=2.0 the core is 5.5 and all 11 sit level, worst
+// spread 0.21. The cost is that the terrace reaches ~2 units past the old
+// shoreline, so a small headland of grass is pushed into the sea — visible in
+// docs/shots, and cheaper than a village whose buildings hover.
+const VILLAGE_SITE = { angle: Math.PI / 2, at: 0.62, r: 7.5, feather: 2.0 };
 
 // Markers are placed RELATIVE TO THE VILLAGE, not at absolute coordinates. A
 // hardcoded (20.5, 31.5) was a coordinate on a 40x40 island and means open sea
 // on a 64x64 one; anchored to the village they survive every change to the map.
 // `anchor` takes a named spot from village.json; `dx`/`dz` are world units from
-// the village centre.
-const MARKERS = [
-  {
-    id: 'vell', name: 'Vell', anchor: 'vell', kind: 'talk',
-    lines: [
-      { speaker: 'Vell la Cartografa', text: 'Ti sei svegliato. Credevo che la corrente ti avesse preso come gli altri.' },
-      { speaker: 'Vell la Cartografa', text: 'La nave non risponde da tre giorni. Io disegno quest\u2019isola da prima che affondasse, e non l\u2019ho mai finita.' },
-    ],
-  },
-  {
-    id: 'cache', name: 'la Cassa Arrugginita', dx: 7.5, dz: 2.0, kind: 'item', give: { tonic: 3 },
-    lines: [
-      { speaker: 'Cassa Arrugginita', text: 'Qualcuno l\u2019ha incastrata sotto la lastra e non \u00e8 pi\u00f9 tornato a prenderla.' },
-      { speaker: 'Olrik', text: 'Tonici da campo. Abbastanza per farci respirare tutti e quattro. Li prendo.' },
-    ],
-  },
-  {
-    id: 'reed', name: 'la Pattuglia dei Canneti', dx: -9.5, dz: 4.5, kind: 'battle', zone: 'meadow',
-    lines: [
-      { speaker: 'Pattuglia dei Canneti', text: 'Qui nessuno cammina da solo. Torna indietro, e alla svelta.' },
-    ],
-  },
-  {
-    id: 'watch', name: 'la Guardia dell\u2019Altipiano', dx: 0, dz: -13.5, kind: 'battle', zone: 'stone',
-    lines: [
-      { speaker: 'Guardia dell\u2019Altipiano', text: 'Sei salito fin quass\u00f9 per una roccia. La Sentinella aspetta da pi\u00f9 tempo di te.' },
-    ],
-  },
-  {
-    id: 'bimba', name: 'la Bambina', anchor: 'child', kind: 'talk',
-    lines: [
-      { speaker: 'Bimba', text: 'Se vai verso la pietra, porta il ghiaccio. Il fuoco non serve a niente, lass\u00f9.' },
-      { speaker: 'Bimba', text: 'Lo dice sempre mio nonno. Poi per\u00f2 non ci va, nessuno ci va.' },
-    ],
-  },
-  {
-    id: 'fabbro', name: 'il Fabbro', anchor: 'smith', kind: 'talk',
-    lines: [
-      { speaker: 'Fabbro Ivo', text: 'Fucine qui non ne ho. Se trovi qualcosa di utile sulla nave, portamelo e vediamo.' },
-      { speaker: 'Fabbro Ivo', text: 'Da quando \u00e8 caduta la Sentinella sull\u2019altipiano, la corrente ha smesso di portare legna. Non so se le due cose c\u2019entrano.' },
-    ],
-  },
-];
+// the village centre. The table itself is CONTENT and lives in data/markers.json
+// (see the project rule: content is data, never hardcoded coordinates) — which
+// also lets a test assert that every `anchor` names an anchor that exists, the
+// check that would have caught Vell standing on the well.
+const MARKERS = MARKERS_DATA;
 
 export async function createGame({ canvas, uiRoot }) {
   const engine = createEngine(canvas);
@@ -214,6 +194,11 @@ export async function createGame({ canvas, uiRoot }) {
     if (m.anchor) {
       const a = village.anchors.find((x) => x.id === m.anchor);
       if (a) return { x: a.x, z: a.z };
+      // A marker naming an anchor that does not exist used to fall through to the
+      // village centre SILENTLY, which put Vell — the NPC two level stages gate
+      // on — on top of the well while her intended anchor sat unused. Loud, and
+      // still survivable: the fallback keeps the game playable.
+      console.error(`[hd2d] marker "${m.id}" wants anchor "${m.anchor}", which village.json does not define`);
     }
     const c = village.centre || SPAWN;
     return { x: c.x + (m.dx || 0), z: c.z + (m.dz || 0) };
@@ -1006,6 +991,11 @@ export async function createGame({ canvas, uiRoot }) {
         centre: village.centre,
         radius: village.radius,
         safeRadius: village.safeRadius,
+        // The spawn the village chose, which is the one place that is guaranteed
+        // to clear the party's own wedge footprint. A measurement that stands the
+        // party anywhere else is measuring a place the game never promised would
+        // hold a formation.
+        spawn: village.spawn,
         anchors: village.anchors,
         pieces: village.layout.length,
         colliders: village.colliders.length,

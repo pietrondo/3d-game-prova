@@ -46,7 +46,7 @@
  *
  * Exports: createMenu
  */
-import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, tr } from '../core/terms.js';
+import { ELEMENT_IT, SKILL_KIND_IT, ITEM_KIND_IT, WEAPON_TYPE_IT, tr } from '../core/terms.js';
 
 export function createMenu(root) {
   const TABS = ['Squadra', 'Abilità', 'Oggetti', 'Sistema'];
@@ -133,7 +133,7 @@ export function createMenu(root) {
     row.appendChild(el('span', 'menu-row-name', label(s)));
     row.appendChild(el('span', 'menu-row-num', tr(SKILL_KIND_IT, s.kind)));
     row.appendChild(el('span', 'menu-row-num', s.mp != null ? `${s.mp} PM` : ''));
-    row.appendChild(el('span', 'menu-chip', String(tr(ELEMENT_IT, s.element) || s.weaponType || '—').toUpperCase()));
+    row.appendChild(el('span', 'menu-chip', String(tr(ELEMENT_IT, s.element, tr(WEAPON_TYPE_IT, s.weaponType)) || '—').toUpperCase()));
     return row;
   }
 

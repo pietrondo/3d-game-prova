@@ -8,6 +8,7 @@
  * collider, anchor and mesh vertex the village builds.
  */
 import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
 import { createTerrain } from '../src/world/terrain.js';
 import { createVillage, boxColliders } from '../src/world/village.js';
 import tiles from '../src/data/tiles.json';
@@ -203,5 +204,152 @@ describe('createVillage', () => {
     expect(v.spawn).toBeNull();
     expect(v.colliders).toHaveLength(0);
     expect(v.anchors).toHaveLength(0);
+  });
+});
+
+/**
+ * The integration the unit block above cannot reach.
+ *
+ * Everything before this point feeds `createVillage` a STUB terrain, so it can
+ * only ever prove that the village is consistent with the stub. It cannot prove
+ * the property the village and the terrain actually share: that each piece is
+ * placed at the ground height the terrain reports for it.
+ *
+ * That is the project's stated height contract (terrain.js: the visible mesh top
+ * surface IS heightAt), and it is exactly the property a regression would break
+ * silently — translate a piece by (wx, 0, wz) instead of (wx, wy, wz) and the
+ * mesh is still centred correctly, still the right size, still the right colour,
+ * and floating above or sunk into the ground.
+ *
+ * It also covers the second half of the shipped bug: the terrace must be flat
+ * ACROSS EACH PIECE'S FOOTPRINT, not merely at the piece's centre. A fence is
+ * translated by one height; if the ground under its far end differs by half a
+ * metre, that end is buried. `tests/_layoutcheck.mjs` is the measurement; this is
+ * the guard.
+ *
+ * A small map keeps it fast — this is pure maths, no browser.
+ */
+describe('createVillage on a REAL createTerrain', () => {
+  const SITE = { angle: Math.PI / 2, at: 0.62, r: 7.5, feather: 2.0 };
+  const terrain = createTerrain({
+    width: 64, depth: 64, seed: 1337, heightScale: 3.2, tiles, shelf: SITE,
+  });
+
+  // VILLAGE is imported so the test follows the real layout; a layout that is
+  // changed without checking it still fits the terrace should fail here.
+  const VILLAGE = JSON.parse(
+    readFileSync(new URL('../src/data/village.json', import.meta.url), 'utf-8'),
+  );
+
+  // Mirrors village.js's own footprint maths. Deliberately duplicated rather than
+  // exported: the point is to check the builder against an independent reading of
+  // the data, and an export would let both drift together.
+  const halfExtent = (it) => {
+    switch (it.type) {
+      case 'house': return [it.w / 2 + 0.15, it.d / 2 + 0.15];
+      case 'well': return [it.r ?? 0.55, it.r ?? 0.55];
+      case 'sign': return [0.45, 0.2];
+      case 'lantern': return [0.15, 0.15];
+      case 'fence': return it.axis === 'z' ? [0.1, (it.len ?? 5) / 2] : [(it.len ?? 5) / 2, 0.1];
+      default: return [0.2, 0.2];
+    }
+  };
+
+  it('resolves a terrace big enough to hold the real village layout', () => {
+    expect(terrain.shelf).toBeTruthy();
+    // The layout reaches ~5.5 from the centre once house corners are counted, and
+    // a piece placed at its centre's height needs the ground under it to be flat.
+    expect(terrain.shelf.inner).toBeGreaterThanOrEqual(5);
+  });
+
+  it('places every piece at the height the terrain reports for it', () => {
+    const v = createVillage({ terrain, definitions: VILLAGE });
+    const mesh = v.group.getObjectByName('village_mesh');
+    expect(mesh).toBeTruthy();
+    // The merged mesh's lowest vertex must be at or above the terrace floor and
+    // within a piece's height of it: a mesh built at y=0 would be ~0.37 below.
+    mesh.geometry.computeBoundingBox();
+    const bb = mesh.geometry.boundingBox;
+    expect(bb.min.y).toBeGreaterThan(terrain.shelf.y - 0.15);
+    expect(bb.min.y).toBeLessThan(terrain.shelf.y + 0.3);
+  });
+
+  it('sits each piece on level ground: the spread under its footprint is small', () => {
+    // The measured threshold is 0.25 world units: on a 1.8-unit building that is
+    // a visible gap, and it is what separates a placed village from a buried one.
+    const s = terrain.shelf;
+    const worst = [];
+    for (const it of VILLAGE.layout) {
+      const wx = s.x + it.x, wz = s.z + it.z;
+      const [hx, hz] = halfExtent(it);
+      let min = Infinity, max = -Infinity;
+      for (const [ox, oz] of [[-1, -1], [1, -1], [-1, 1], [1, 1], [0, 0]]) {
+        const h = terrain.heightAt(wx + ox * hx, wz + oz * hz);
+        if (h < min) min = h;
+        if (h > max) max = h;
+      }
+      worst.push({ id: it.id, spread: max - min });
+      expect(terrain.isWalkable(wx, wz), `${it.id} stands on unwalkable ground`).toBe(true);
+      expect(max - min, `${it.id} spans ${(max - min).toFixed(3)} of ground height`)
+        .toBeLessThanOrEqual(0.25);
+    }
+    // And at least one piece must be measured, or the loop above proves nothing.
+    expect(worst.length).toBe(VILLAGE.layout.length);
+    expect(worst.length).toBeGreaterThan(0);
+  });
+
+  it('spawns clear of the real colliders, so no follower is trapped', () => {
+    const v = createVillage({ terrain, definitions: VILLAGE });
+    for (const c of v.colliders) {
+      expect(Math.hypot(v.spawn.x - c.x, v.spawn.z - c.z), `spawn too close to a collider`)
+        .toBeGreaterThan(c.r);
+    }
+    expect(terrain.isWalkable(v.spawn.x, v.spawn.z)).toBe(true);
+  });
+
+  it('resolves every marker against a real village anchor', () => {
+    // The shipped bug: markers.json asked for anchor 'vell' while village.json
+    // defined 'elder', and markerSpot fell through to the village centre in
+    // silence, so the level's central NPC stood on the well.
+    //
+    // Note the invariant is NOT "every level marker is an anchor" — the cache and
+    // the two fights are placed by dx/dz offsets, not by an NPC. It is: a marker
+    // that NAMES an anchor must name one that exists, and every marker must have
+    // a way to be placed at all.
+    const v = createVillage({ terrain, definitions: VILLAGE });
+    const anchorIds = new Set(v.anchors.map((a) => a.id));
+    const markers = JSON.parse(
+      readFileSync(new URL('../src/data/markers.json', import.meta.url), 'utf-8'),
+    );
+    expect(markers.length).toBeGreaterThan(0);
+
+    for (const m of markers) {
+      const placable = m.anchor != null || (m.dx != null && m.dz != null);
+      expect(placable, `marker "${m.id}" has neither an anchor nor a dx/dz`).toBe(true);
+      if (m.anchor != null) {
+        expect(anchorIds.has(m.anchor),
+          `marker "${m.id}" names anchor "${m.anchor}", which village.json does not define`)
+          .toBe(true);
+      }
+    }
+  });
+
+  it('resolves every marker the level waits on to a real marker id', () => {
+    // level1.json's `marker` field is compared against a marker's `id` (see
+    // useMarker in game.js). A stage pointing at an id nobody defines is a stage
+    // that can never be spent, and the area becomes unfinishable in silence.
+    const markers = JSON.parse(
+      readFileSync(new URL('../src/data/markers.json', import.meta.url), 'utf-8'),
+    );
+    const level = JSON.parse(
+      readFileSync(new URL('../src/data/level1.json', import.meta.url), 'utf-8'),
+    );
+    const ids = new Set(markers.map((m) => m.id));
+    const wanted = level.stages.map((st) => st.marker).filter(Boolean);
+    expect(wanted.length).toBeGreaterThan(0);
+    for (const id of wanted) {
+      expect(ids.has(id), `level1.json waits on marker "${id}", which markers.json does not define`)
+        .toBe(true);
+    }
   });
 });

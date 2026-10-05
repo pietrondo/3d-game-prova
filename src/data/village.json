@@ -16,7 +16,7 @@
   ],
 
   "anchors": [
-    { "id": "elder", "x": 0.4, "z": 3.6, "facing": "down", "speaker": "Nerio il Guardiano" },
+    { "id": "vell", "x": 0.4, "z": 3.6, "facing": "down", "speaker": "Vell la Cartografa" },
     { "id": "child", "x": -4.0, "z": -1.4, "facing": "right", "speaker": "Bimba" },
     { "id": "smith", "x": 3.2, "z": 0.2, "facing": "left", "speaker": "Fabbro Ivo" }
   ],
