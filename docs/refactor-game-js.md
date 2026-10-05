@@ -67,15 +67,16 @@ rebuilt on every transition and a captured terrain would plant the tufts at the
 wrong heights after the climb — in silence. `rng` is captured, because
 `Math.random` cannot go stale.
 
-## Step 3 — `game/cameraRig.js`
+## Step 3 — `game/cameraRig.js` — **DONE**
 
-**~40 lines out.** The deadzone follow: `focusX/focusZ`, `followLeader`,
-`followCamera`, and the lead-ahead factor. Interface:
-`createCameraRig({ engine, terrain, party })` → `{ followLeader(), followCamera(),
-snapTo(x, z) }`. `snapTo` is what `enterArea` needs today.
+**Measured: −15 lines.** Small because the win is small, and the trick that made
+it safe is worth copying: the rig's methods are **aliased to the local names**
+(`const { followCamera, followLeader } = rig`), so the six existing call sites did
+not change at all, and every `focusX/focusZ` pair became one `rig.snapTo(x, z)` —
+three of them, by regex, with an assert that no `focusX` survived.
 
-Constants to move with it: `DEADZONE`, `LEAD_AHEAD`. They describe the rig, not the
-game.
+The nine touch points I counted before starting were real; aliasing removed six of
+them from the diff.
 
 ## Step 4 — `game/hudGlue.js`
 

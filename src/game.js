@@ -61,6 +61,7 @@ import { createArea } from './game/area.js';
 import { AREAS, START_AREA } from './game/areas.js';
 import { installQaHandle } from './game/qa.js';
 import { createRustle } from './game/rustle.js';
+import { createCameraRig } from './game/cameraRig.js';
 import './battle/battle.css';
 
 import PROPS from './data/props.json';
@@ -203,31 +204,18 @@ export async function createGame({ canvas, uiRoot }) {
   const hitStop = (s) => { freeze = Math.max(freeze, s); };
 
   // -------------------------------------------------------------- camera ---
-  let focusX = spawn.x;
-  let focusZ = spawn.z;
-  function followCamera() {
-    const l = party.leader.position;
-    // Deadzone: the focus only moves by the overflow past the box, so a small
-    // wander never nudges the frame. engine.js lerps the rest of the way.
-    const dx = l.x - focusX;
-    const dz = l.z - focusZ;
-    if (Math.abs(dx) > DEADZONE) focusX += (Math.abs(dx) - DEADZONE) * Math.sign(dx);
-    if (Math.abs(dz) > DEADZONE) focusZ += (Math.abs(dz) - DEADZONE) * Math.sign(dz);
-    const d = Math.hypot(dx, dz);
-    // d is 0 whenever the leader is exactly on the focus, which is the resting
-    // state — dividing first would put NaN in the camera anchor and blank the
-    // whole scene. Fold lead/d into one factor so the resting case is 0 * 0.
-    const k = d > 1e-4 && party.leader.state === 'walk' ? LEAD_AHEAD / d : 0;
-    engine.setCameraTarget(
-      focusX + dx * k,
-      terrain.heightAt(focusX, focusZ) + 1.4,
-      focusZ + dz * k,
-    );
-  }
-  const followLeader = () => {
-    focusX = party.leader.position.x;
-    focusZ = party.leader.position.z;
-  };
+  // The deadzone follow lives in game/cameraRig.js. `terrain` and `party` are
+  // handed over as THUNKS: both are rebound by `enterArea`, and a captured value
+  // would focus on heights from the map the party has already left.
+  //
+  // The rig's methods are aliased to the local names on purpose — the six call
+  // sites below then read exactly as they did when this was all one file.
+  const rig = createCameraRig({
+    engine, terrain: () => terrain, party: () => party,
+    deadzone: DEADZONE, leadAhead: LEAD_AHEAD,
+  });
+  const { followCamera, followLeader } = rig;
+  rig.snapTo(spawn.x, spawn.z);
 
   // -------------------------------------------------------------- markers ---
   const markTex = (() => {
@@ -863,8 +851,7 @@ export async function createGame({ canvas, uiRoot }) {
     placeParty(sx, sz);
     syncActors();
     syncHud();
-    focusX = sx;
-    focusZ = sz;
+    rig.snapTo(sx, sz);
     engine.setCameraTarget(sx, terrain.heightAt(sx, sz) + 1.4, sz);
     walked = 0;
     return true;
@@ -919,8 +906,7 @@ export async function createGame({ canvas, uiRoot }) {
     for (const m of markers) { m.used = false; m.visited = false; }
     markerMemory.clear();
     placeParty(spawn.x, spawn.z);
-    focusX = spawn.x;
-    focusZ = spawn.z;
+    rig.snapTo(spawn.x, spawn.z);
     engine.setCameraTarget(spawn.x, terrain.heightAt(spawn.x, spawn.z) + 1.4, spawn.z);
     syncActors();
     syncHud();
@@ -991,8 +977,7 @@ export async function createGame({ canvas, uiRoot }) {
       // like it had lost them. See placeParty.
       placeParty(at.x, at.z);
       followLeader();
-      focusX = at.x;
-      focusZ = at.z;
+      rig.snapTo(at.x, at.z);
       engine.setCameraTarget(at.x, terrain.heightAt(at.x, at.z) + 1.4, at.z);
     }
     save.apply(data);
