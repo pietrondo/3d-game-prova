@@ -62,7 +62,7 @@ function trimBag(bag) {
   return { gold: bag.gold, items };
 }
 
-export function createSave({ level, bag, allies, leader, partyIds }) {
+export function createSave({ level, bag, allies, leader, partyIds, markers = [] }) {
   const store = storage();
 
   /** Build the payload. Kept separate so the QA handle can inspect it. */
@@ -76,6 +76,11 @@ export function createSave({ level, bag, allies, leader, partyIds }) {
         id: a.uid, hp: a.currentHP, mp: a.currentMP, boosted: !!a.boosted,
       })),
       bag: trimBag(bag),
+      // WHICH markers have been consumed. Without this a reload rebuilt every
+      // marker with `used: false`, so the wreck could be looted again on every
+      // load: save, reload, Continue, take the 40 gold and the three tonics,
+      // repeat. The shop is what made the duplicated gold worth farming.
+      markers: markers.map((m) => ({ id: m.id, used: !!m.used, visited: !!m.visited })),
     };
   }
 
@@ -145,6 +150,17 @@ export function createSave({ level, bag, allies, leader, partyIds }) {
 
       bag.addGold((data.bag?.gold || 0) - bag.gold);   // set, not add
       for (const [id, n] of Object.entries(data.bag?.items || {})) bag.add(id, Number(n) || 0);
+
+      // Restore which markers were consumed. A save with no `markers` field (one
+      // written before this existed) simply leaves them all fresh, which is the
+      // old behaviour rather than a crash.
+      const byId = new Map(markers.map((m) => [m.id, m]));
+      for (const s of data.markers || []) {
+        const m = byId.get(s.id);
+        if (!m) continue;                       // a marker a later build removed
+        m.used = !!s.used;
+        m.visited = !!s.visited;
+      }
 
       return true;
     },

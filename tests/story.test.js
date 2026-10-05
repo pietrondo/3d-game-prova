@@ -133,4 +133,30 @@ describe('story coherence', () => {
     const gated = level.stages.filter((s) => s.marker);
     expect(gated.map((s) => s.id)).toEqual(['talk', 'cache', 'fight', 'sentinel', 'done']);
   });
+
+  it('gives every catalogue item a whole, positive price', () => {
+    // The inventory charges with Number.isInteger, so a price that is a string or
+    // a fraction makes the item silently unbuyable rather than exploitable. That
+    // is a DATA bug, and a data bug belongs here, where it fails loudly, instead
+    // of at the counter where it looks like the shop is broken.
+    const items = read('items.json');
+    const entries = Object.entries(items);
+    expect(entries.length).toBeGreaterThan(0);
+    for (const [id, def] of entries) {
+      expect(Number.isInteger(def.price), `item ${id} has price ${JSON.stringify(def.price)}`).toBe(true);
+      expect(def.price, `item ${id} is priced at ${def.price}`).toBeGreaterThan(0);
+    }
+  });
+
+  it('stocks the shop with items that exist, and nothing else', () => {
+    // The same shape of invariant as the marker/anchor check: two lists that must
+    // agree. A stock id with no catalogue entry is a row that cannot be priced.
+    const items = read('items.json');
+    const shop = read('shop.json');
+    expect(Array.isArray(shop.stock)).toBe(true);
+    expect(shop.stock.length).toBeGreaterThan(0);
+    for (const id of shop.stock) {
+      expect(items[id], `shop.json stocks "${id}", which items.json does not define`).toBeTruthy();
+    }
+  });
 });

@@ -191,6 +191,24 @@ describe('inventory', () => {
     expect(bag.gold).toBe(50);
   });
 
+  it('refuses a FRACTIONAL price, which would leave a non-integer purse', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(50);
+    // `Number.isFinite(30.5)` is true, so this used to pass and leave the purse
+    // reading "19.5 oro".
+    expect(bag.spend(30.5)).toBe(false);
+    expect(bag.gold).toBe(50);
+  });
+
+  it('refuses a price that is a string, and does not make the item free', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(50);
+    expect(bag.spend('30')).toBe(false);
+    expect(bag.buy('tonic', '30')).toBe(false);
+    expect(bag.gold).toBe(50);
+    expect(bag.count('tonic')).toBe(0);
+  });
+
   it('snapshot carries only what is held', () => {
     const bag = createInventory(ITEMS);
     bag.add('tonic', 2);

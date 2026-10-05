@@ -64,9 +64,16 @@ export function createInventory(items = {}) {
      * purpose: a caller that did `if (gold >= n) addGold(-n)` has a window where
      * the balance is still readable between the two, and the cost is a purchase
      * that can go through twice.
+     *
+     * `Number.isInteger`, not `Number.isFinite`: a fractional price would pass a
+     * finiteness check, deduct 30.5 and leave the purse reading "9.5 oro". A
+     * price that is a STRING is refused the same way, which makes the item
+     * silently unbuyable — a data bug, not an exploit, and `tests/story.test.js`
+     * asserts every catalogue price is a positive integer so it fails there
+     * instead of at the counter.
      */
     spend(n) {
-      if (!Number.isFinite(n) || n <= 0 || gold < n) return false;
+      if (!Number.isInteger(n) || n <= 0 || gold < n) return false;
       gold -= n;
       return true;
     },

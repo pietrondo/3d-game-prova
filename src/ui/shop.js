@@ -47,6 +47,9 @@ export function createShop(root, { input }) {
   let sel = 0;
   let done = null;
   let onBuy = null;
+  // Frames left in which `interact` must be ignored. See the note in open():
+  // the press that closes the greeting is still queued when the counter appears.
+  let grace = 0;
 
   function el(tag, cls, text) {
     const n = document.createElement(tag);
@@ -86,6 +89,10 @@ export function createShop(root, { input }) {
     const next = onBuy(it.id);
     if (next) {
       stock = next.stock;
+      // The rows are REBUILT by the caller, so the array identity changes and a
+      // shorter stock would leave `sel` past the end — no highlight, and confirm
+      // silently doing nothing. Clamp.
+      sel = Math.min(sel, stock.length - 1);
       lastGold = next.gold;
     }
     render(lastGold);
@@ -135,6 +142,15 @@ export function createShop(root, { input }) {
       sel = 0;
       onBuy = buy;
       isOpen = true;
+      // ONE FRAME OF GRACE, and it is not paranoia. `core/input.js` latches the
+      // `interact` edge once per frame and SHARES it between consumers, and
+      // `dialogue.js` closes on its own window keydown listener without
+      // consuming that edge. So the very press that ends the shopkeeper's
+      // greeting is still queued when this runs — measured: the tonics went up
+      // and 30 gold vanished on the press that opened the counter. Skipping the
+      // first read() swallows exactly that one edge, because `downEdges` is
+      // rebuilt every update().
+      grace = 1;
       node.hidden = false;
       render(gold);
       return new Promise((res) => { done = res; });
@@ -143,6 +159,14 @@ export function createShop(root, { input }) {
     /** Once per frame, after input.update(). Mirrors battle/commands.js read(). */
     read() {
       if (!isOpen) return;
+      if (grace > 0) {
+        grace--;
+        // Still allow leaving: only the CONFIRM key is suppressed, so an Escape
+        // in the same press that opened the panel is not the thing that gets
+        // swallowed and traps the player.
+        if (input.pressed('cancel')) close();
+        return;
+      }
       // The keyboard path goes through here for the same reason the battle prompt
       // does: core/input.js owns the edges, and a second keydown listener on the
       // title/menu pattern would double-handle the same press.

@@ -101,7 +101,12 @@ export function createHud(root) {
   }
 
   function setVisible(v) {
-    node.hidden = !v;
+    // Hides the PARTY PLATES and the hint, but NOT the toast. The shop calls this
+    // to clear the screen while the player is at the counter, and a toast inside
+    // a hidden subtree is a message nobody reads: "non bastano i soldi" was
+    // invisible exactly when it mattered, and the only feedback a refused
+    // purchase had was the gold not changing.
+    node.classList.toggle('is-plates-hidden', !v);
   }
 
   function dispose() {

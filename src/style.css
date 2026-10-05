@@ -85,6 +85,13 @@ body {
 .dialogue-plate[hidden], .dialogue-caret[hidden],
 .hud-chip[hidden], .hud-turn-hint[hidden], .hud-hint[hidden] { display: none; }
 
+/* The plates and the hint, without the toast: see hud.js::setVisible. The shop
+   clears the screen while the player is at the counter, and a refusal message
+   hidden with the plates is a message nobody reads. */
+.hud.is-plates-hidden .hud-party,
+.hud.is-plates-hidden .hud-turn-hint,
+.hud.is-plates-hidden .hud-hint { display: none; }
+
 .hud { inset: 0; pointer-events: none; }
 .hud [hidden] { display: none; }
 

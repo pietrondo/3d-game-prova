@@ -350,7 +350,7 @@ export async function createGame({ canvas, uiRoot }) {
     sprite.position.set(spot.x, terrain.heightAt(spot.x, spot.z) + 1.5, spot.z);
     sprite.userData = { base: sprite.position.y, phase: i * 1.3 };
     markerGroup.add(sprite);
-    return { ...m, x: spot.x, z: spot.z, sprite, used: false };
+    return { ...m, x: spot.x, z: spot.z, sprite, used: false, visited: false };
   });
   engine.scene.add(markerGroup);
 
@@ -565,7 +565,15 @@ export async function createGame({ canvas, uiRoot }) {
     // one-shot, and a used marker the level is not waiting on has nothing to say.
     const repeatable = m.kind === 'shop';
     if (m.used && !wanted && !repeatable) { hud.toast('Qui non c\u2019\u00e8 pi\u00f9 niente.'); return; }
-    const firstVisit = !m.used;
+    // TWO FLAGS, not one. `used` means CONSUMED — the sprite dims and the marker
+    // has nothing left to say. `visited` means "has been talked to at least
+    // once", and it is what gates the greeting. A repeatable marker never sets
+    // `used`, so keying the greeting on it made `firstVisit` permanently true:
+    // the shopkeeper replayed his whole introduction on every visit, and any
+    // `give`/`gold` ever put on a repeatable marker would have been re-awarded
+    // every time. The two questions are different and now have different answers.
+    const firstVisit = !m.visited;
+    m.visited = true;
     // Consume only on a first visit that the level was not waiting for, or
     // explicitly on a stage that the level just spent.
     if (!repeatable && (firstVisit || wanted)) m.used = true;
@@ -623,7 +631,9 @@ export async function createGame({ canvas, uiRoot }) {
       // them — they need to know the first step.
       const goal = level.objective;
       if (goal) text = `\u25c6 ${goal}`;
-      else if (m) text = `E \u2014 parla con ${m.name}`;
+      // A counter is not a conversation: "parla con" reads wrong on a shop, and
+      // the player is being told what the key does, not who is standing there.
+      else if (m) text = m.kind === 'shop' ? `E \u2014 compra da ${m.name}` : `E \u2014 parla con ${m.name}`;
       else text = 'WASD per muoverti \u00b7 E per interagire \u00b7 Esc per il menu \u00b7 backtick = scala';
     }
     if (text === hintText) return;     // hud.setHint is a DOM write; skip no-ops
@@ -894,7 +904,7 @@ export async function createGame({ canvas, uiRoot }) {
       a.currentMP = a.maxMP;
       a.boosted = false;
     }
-    for (const m of markers) m.used = false;
+    for (const m of markers) { m.used = false; m.visited = false; }
     for (const m of party.members) {
       const s = clearSpot(spawn.x, spawn.z - party.members.indexOf(m) * 0.9);
       m.setPosition(s.x, s.z);
@@ -956,7 +966,7 @@ export async function createGame({ canvas, uiRoot }) {
   // terrain or props would only give a save a way to disagree with the island
   // the game actually built. A fresh game is "no save", which is also what a
   // corrupt or future-versioned slot falls back to.
-  const save = createSave({ level, bag, allies, leader: party.leader, partyIds: PARTY_IDS });
+  const save = createSave({ level, bag, allies, leader: party.leader, partyIds: PARTY_IDS, markers });
   function restore() {
     const data = save.load();
     if (!data) return false;

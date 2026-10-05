@@ -216,23 +216,54 @@ def main():
         first = page.evaluate("() => window.__hd2d.shopState.rows[0]")
         bought = page.evaluate("() => window.__hd2d.shopState.selection")
         check("the cursor starts on the first item", bought == first["id"], bought)
-        qa_drive.tap(page)   # Enter buys the selected row
+
+        # THE REGRESSION. Opening the counter must not buy anything: `core/input.js`
+        # latches the `interact` edge once per frame and shares it, and dialogue.js
+        # closes on its own listener without consuming it, so the press that ends
+        # the greeting used to arrive at `shop.read()` on the next frame and buy a
+        # 30-gold tonic nobody chose. Measured before the fix: gold 40 -> 10 and the
+        # tonics went up on the very press that opened the panel.
+        #
+        # The old assertion could not see it: it compared against `before_shop`
+        # AFTER the drain, so an auto-buy plus a refused explicit tap still summed
+        # to exactly one price.
+        opened = page.evaluate("() => window.__hd2d.bag")
+        check("opening the counter buys nothing", opened == before_shop,
+              f"{before_shop} -> {opened}")
+
+        qa_drive.tap(page)   # Enter buys the selected row, deliberately
         page.wait_for_timeout(300)
         after_buy = page.evaluate("() => window.__hd2d.bag")
-        check("buying takes the gold",
-              after_buy["gold"] == before_shop["gold"] - first["price"],
-              f"{before_shop['gold']} - {first['price']} -> {after_buy['gold']}")
-        check("buying delivers the item",
-              after_buy["items"].get(first["id"], 0) > before_shop["items"].get(first["id"], 0),
-              f"{before_shop['items']} -> {after_buy['items']}")
+        check("one buy takes exactly one price",
+              after_buy["gold"] == opened["gold"] - first["price"],
+              f"{opened['gold']} - {first['price']} -> {after_buy['gold']}")
+        check("one buy delivers exactly one item",
+              after_buy["items"].get(first["id"], 0) == opened["items"].get(first["id"], 0) + 1,
+              f"{opened['items']} -> {after_buy['items']}")
 
-        # Buying again with too little gold must refuse without charging.
-        short = page.evaluate("() => window.__hd2d.bag.gold")
-        for _ in range(8):
+        # Spend the rest, then try one more: a refusal must change nothing at all,
+        # and must SAY so where the player can see it.
+        for _ in range(12):
+            page.evaluate("() => window.__hd2d.shopState")
+            if page.evaluate("() => window.__hd2d.bag.gold") < first["price"]:
+                break
             qa_drive.tap(page)
-            page.wait_for_timeout(120)
-        drained = page.evaluate("() => window.__hd2d.bag.gold")
-        check("the shop never lets the purse go negative", drained >= 0, f"{short} -> {drained}")
+            page.wait_for_timeout(140)
+        short = page.evaluate("() => window.__hd2d.bag")
+        check("the purse cannot afford another", short["gold"] < first["price"], short["gold"])
+        qa_drive.tap(page)   # this one must be refused
+        page.wait_for_timeout(300)
+        refused = page.evaluate("() => window.__hd2d.bag")
+        check("a refused buy changes nothing", refused == short, f"{short} -> {refused}")
+        # And the refusal is VISIBLE: the toast used to render inside the hidden
+        # `.hud`, so "non bastano i soldi" was a message nobody could read.
+        seen = page.evaluate("""() => {
+          const t = document.querySelector('.hud-toast');
+          if (!t) return false;
+          return getComputedStyle(t).display !== 'none' && t.getBoundingClientRect().height > 0;
+        }""")
+        check("a refused buy is visible to the player", seen is True, seen)
+
         qa_drive.tap(page, "Escape", hold=50, settle=300)
         check("Esc leaves the counter",
               page.evaluate("() => window.__hd2d.shopState.open") is False)
@@ -260,6 +291,20 @@ def main():
         check("the bag survives a reload", st["bag"] == before_bag,
               f"{before_bag} -> {st['bag']}")
         check("no intro replay on resume", st["mode"] == "overworld", st["mode"])
+
+        # The reload must not RESET what has already been taken. Markers are
+        # rebuilt fresh on every load, and the save used to carry no marker state,
+        # so the wreck could be looted again on every Continue: 40 gold and three
+        # tonics, forever. With the counter in the game, that gold became spendable
+        # and the duplication became worth doing.
+        cache_after = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'cache')")
+        page.evaluate(f"() => window.__hd2d.teleport({cache_after['x']}, {cache_after['z']})")
+        page.wait_for_timeout(400)
+        qa_drive.tap(page, "KeyE", hold=50, settle=300)
+        qa_drive.dismiss(page)
+        reloot = page.evaluate("() => window.__hd2d.bag")
+        check("the wreck cannot be looted again after a reload", reloot == before_bag,
+              f"{before_bag} -> {reloot}")
 
         print("\n== info panel ==")
         # Esc via tap(), not press(): core/input.js derives the edge inside
