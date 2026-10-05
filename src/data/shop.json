@@ -1,0 +1,10 @@
+{
+  "id": "ivo",
+  "title": "Bottega di Ivo",
+  "stock": ["tonic", "ether", "phoenix_bloom"],
+  "note": {
+    "tonic": "cura 40 PV",
+    "ether": "restituisce 15 PM",
+    "phoenix_bloom": "rianima a met\u00e0 PV"
+  }
+}

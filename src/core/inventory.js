@@ -71,6 +71,26 @@ export function createInventory(items = {}) {
       return true;
     },
 
+    /**
+     * Buy one `id` for `price`. ONE operation, and it is here rather than in the
+     * shop UI because the shop is not the only thing that could ever buy: a
+     * caller doing `if (bag.spend(price)) bag.add(id, 1)` has two failure windows
+     * that this closes — an id that is not in the catalogue would take the gold
+     * and give nothing, and any exception between the two calls would leave the
+     * purchase half-applied.
+     *
+     * `price` comes from the caller (items.json's `price`), not from a stored
+     * copy, so rebalancing an item does not need a save migration.
+     *
+     * Returns true only when both the payment and the delivery happened.
+     */
+    buy(id, price) {
+      if (!counts.has(id)) return false;        // nothing to deliver: do not charge
+      if (!this.spend(price)) return false;
+      this.add(id, 1);
+      return true;
+    },
+
     get gold() { return gold; },
 
     /**

@@ -197,4 +197,39 @@ describe('inventory', () => {
     bag.addGold(35);
     expect(bag.snapshot()).toEqual({ gold: 35, items: { tonic: 2 } });
   });
+
+  it('buy charges and delivers as ONE operation', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(50);
+    expect(bag.buy('tonic', 30)).toBe(true);
+    expect(bag.gold).toBe(20);
+    expect(bag.count('tonic')).toBe(1);
+  });
+
+  it('buy refuses before charging when the purse is short', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(29);
+    expect(bag.buy('tonic', 30)).toBe(false);
+    // The refusal must not have taken anything: the whole reason `buy` exists is
+    // that `spend` then `add` has a window where a failure loses the gold.
+    expect(bag.gold).toBe(29);
+    expect(bag.count('tonic')).toBe(0);
+  });
+
+  it('buy refuses an id that is not in the catalogue, and charges nothing', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(999);
+    expect(bag.buy('sword', 100)).toBe(false);
+    expect(bag.gold).toBe(999);
+  });
+
+  it('buy is repeatable until the gold runs out', () => {
+    const bag = createInventory(ITEMS);
+    bag.addGold(70);
+    expect(bag.buy('tonic', 30)).toBe(true);
+    expect(bag.buy('tonic', 30)).toBe(true);
+    expect(bag.buy('tonic', 30)).toBe(false);
+    expect(bag.count('tonic')).toBe(2);
+    expect(bag.gold).toBe(10);
+  });
 });

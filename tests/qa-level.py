@@ -184,6 +184,59 @@ def main():
         check("the cache cannot be farmed", again["items"] == after["items"],
               f"{after} -> {again}")
 
+        print("\n== the shop ==")
+        # The economy had no sink: gold accumulated and items.json's `price` was
+        # read by nothing. This asserts the counter actually takes gold and hands
+        # over the item, which a screenshot of a toast cannot prove.
+        before_shop = page.evaluate("() => window.__hd2d.bag")
+        check("the wreck paid enough to shop", before_shop["gold"] >= 30, before_shop["gold"])
+        smith = page.evaluate("() => window.__hd2d.markers.find(m => m.id === 'fabbro')")
+        check("the blacksmith is a marker", smith is not None, smith)
+        page.evaluate(f"() => window.__hd2d.teleport({smith['x']}, {smith['z']})")
+        page.wait_for_timeout(400)
+        # Talk, then drain his greeting and the counter opens. The marker is
+        # repeatable, so a second tap reopens the shop directly if the first
+        # landed a beat early.
+        for _ in range(3):
+            qa_drive.tap(page, "KeyE", hold=50, settle=300)
+            qa_drive.dismiss(page)
+            page.wait_for_timeout(300)
+            if page.evaluate("() => window.__hd2d.shopState.open"):
+                break
+        shop = page.evaluate("() => window.__hd2d.shopState")
+        check("the shop opens", shop["open"] is True, shop)
+        check("the shop lists its stock", len(shop["rows"]) >= 3, shop["rows"])
+        # Evidence, not just a number: the counter is the one UI that has never
+        # been looked at, and "the rows exist" says nothing about whether they fit.
+        SHOTS = ROOT / "docs" / "shots"
+        SHOTS.mkdir(parents=True, exist_ok=True)
+        page.screenshot(path=str(SHOTS / "07-shop.png"))
+        print(f"  shot  {(SHOTS / '07-shop.png').relative_to(ROOT)}")
+
+        first = page.evaluate("() => window.__hd2d.shopState.rows[0]")
+        bought = page.evaluate("() => window.__hd2d.shopState.selection")
+        check("the cursor starts on the first item", bought == first["id"], bought)
+        qa_drive.tap(page)   # Enter buys the selected row
+        page.wait_for_timeout(300)
+        after_buy = page.evaluate("() => window.__hd2d.bag")
+        check("buying takes the gold",
+              after_buy["gold"] == before_shop["gold"] - first["price"],
+              f"{before_shop['gold']} - {first['price']} -> {after_buy['gold']}")
+        check("buying delivers the item",
+              after_buy["items"].get(first["id"], 0) > before_shop["items"].get(first["id"], 0),
+              f"{before_shop['items']} -> {after_buy['items']}")
+
+        # Buying again with too little gold must refuse without charging.
+        short = page.evaluate("() => window.__hd2d.bag.gold")
+        for _ in range(8):
+            qa_drive.tap(page)
+            page.wait_for_timeout(120)
+        drained = page.evaluate("() => window.__hd2d.bag.gold")
+        check("the shop never lets the purse go negative", drained >= 0, f"{short} -> {drained}")
+        qa_drive.tap(page, "Escape", hold=50, settle=300)
+        check("Esc leaves the counter",
+              page.evaluate("() => window.__hd2d.shopState.open") is False)
+
         print("\n== save / load ==")
         saved = page.evaluate("() => window.__hd2d.save()")
         check("save writes", saved is True, saved)

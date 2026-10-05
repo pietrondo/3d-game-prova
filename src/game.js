@@ -60,6 +60,7 @@ import { createInventory } from './core/inventory.js';
 import { createLevel, EVENTS } from './core/level.js';
 import { createSave } from './core/save.js';
 import { createTitle } from './ui/title.js';
+import { createShop } from './ui/shop.js';
 import './battle/battle.css';
 
 import TILES from './data/tiles.json';
@@ -71,6 +72,7 @@ import LEVEL1 from './data/level1.json';
 import VILLAGE from './data/village.json';
 import INFO from './data/info.json';
 import MARKERS_DATA from './data/markers.json';
+import SHOP from './data/shop.json';
 
 // 64x64, not the original 40x40. The island is a radial falloff, so the size
 // is not a viewport — it IS the island: at 40 the shoreline sat ~14 units from
@@ -275,6 +277,10 @@ export async function createGame({ canvas, uiRoot }) {
   const hud = createHud(uiRoot);
   const dialogue = createDialogue(uiRoot);
   const menu = createMenu(uiRoot);
+  // The blacksmith's counter. It exists because items.json prices three items,
+  // battles award gold, and nothing spent it: the economy was a number that only
+  // grew, against an NPC whose line already promised otherwise.
+  const shop = createShop(uiRoot, { input });
 
   const fadeEl = el('div');
   fadeEl.className = 'fade';
@@ -554,17 +560,25 @@ export async function createGame({ canvas, uiRoot }) {
     // translated; an id does not. Matching on the displayed string meant a
     // translation silently broke every marker-gated stage.
     const wanted = level.stage?.marker === m.id;
-    // Already used AND the level does not want it now: nothing to say.
-    if (m.used && !wanted) { hud.toast('Qui non c\u2019\u00e8 pi\u00f9 niente.'); return; }
+    // A shop is a COUNTER, not an event: it is never consumed, so the player can
+    // come back and spend the gold the next fight gave them. Everything else is
+    // one-shot, and a used marker the level is not waiting on has nothing to say.
+    const repeatable = m.kind === 'shop';
+    if (m.used && !wanted && !repeatable) { hud.toast('Qui non c\u2019\u00e8 pi\u00f9 niente.'); return; }
     const firstVisit = !m.used;
     // Consume only on a first visit that the level was not waiting for, or
     // explicitly on a stage that the level just spent.
-    if (firstVisit || wanted) m.used = true;
-    mode = 'dialogue';
-    applyHint();                      // the hint is HIDDEN while a dialogue is open
-    // Only speak the marker's own lines the first time, or the return trip to
-    // Vell would replay the introduction.
-    await dialogue.say(firstVisit ? m.lines : [{ speaker: m.name, text: 'C\u2019\u00e8 qualcosa di nuovo, l\u00e0 fuori?' }]);
+    if (!repeatable && (firstVisit || wanted)) m.used = true;
+
+    // A shopkeeper says hello once and then just serves. Making him repeat his
+    // introduction every visit would be a greeting card, not a shop.
+    if (!(repeatable && !firstVisit)) {
+      mode = 'dialogue';
+      applyHint();                    // the hint is HIDDEN while a dialogue is open
+      // Only speak the marker's own lines the first time, or the return trip to
+      // Vell would replay the introduction.
+      await dialogue.say(firstVisit ? m.lines : [{ speaker: m.name, text: 'C\u2019\u00e8 qualcosa di nuovo, l\u00e0 fuori?' }]);
+    }
     // The cache used to PRINT "Gained 3 x Field Tonic" and give the player
     // nothing, because no bag existed. `give` is the item table for the marker:
     // adding a pickup is a JSON edit, not a code path. First visit only, or a
@@ -576,11 +590,22 @@ export async function createGame({ canvas, uiRoot }) {
         if (def) hud.toast(`Ottenuto ${n} \u00d7 ${def.name}`, 2200);
       }
     }
+    // Gold the wreck left behind. The blacksmith is in the village and reachable
+    // in the first minute, while the first fight pays 7: a shop nobody can afford
+    // to use is a locked door with a counter behind it. The cache is salvage, and
+    // Ivo's own line already says the wreck pays.
+    if (firstVisit && m.gold) {
+      bag.addGold(m.gold);
+      hud.toast(`Trovati ${m.gold} oro`, 2200);
+    }
     resetWander(ROLLS_GRACE);
     // A marker the current stage points at is what the level is waiting for.
     // This must run BEFORE the fight: the stage's lines explain the fight.
     if (wanted) await levelEvent(EVENTS.TALK, m.id);
     if (m.kind === 'battle' && firstVisit) await startEncounter(m.zone);
+    // Every visit, not just the first: a shop you can only enter once is a
+    // vending machine, and the gold from the next fight would have nowhere to go.
+    if (repeatable) await openShop();
     mode = 'overworld';
     applyHint();
     autosave();
@@ -646,6 +671,47 @@ export async function createGame({ canvas, uiRoot }) {
       return;
     }
     if (level.canAdvance(EVENTS.MENU)) await levelEvent(EVENTS.MENU);
+  }
+
+  async function openShop() {
+    const ids = (Array.isArray(SHOP.stock) ? SHOP.stock : []).filter((id) => ITEMS[id]);
+    if (!ids.length) return;
+
+    // Rows are rebuilt from the bag every time, so the purse and the "ne hai N"
+    // counts move together with the purchase instead of being patched in place.
+    const rows = () => ids.map((id) => ({
+      id,
+      name: ITEMS[id].name,
+      price: ITEMS[id].price ?? 0,
+      note: SHOP.note?.[id] || '',
+      owned: bag.count(id),
+    }));
+
+    mode = 'shop';
+    hud.setVisible(false);
+    hintText = null;
+    await shop.open({
+      title: SHOP.title || 'Bottega',
+      stock: rows(),
+      gold: bag.gold,
+      onBuy: (id) => {
+        const def = ITEMS[id];
+        if (!def) return null;
+        // The atomic buy lives in the inventory: it refuses before charging, so a
+        // purchase can never take the gold and deliver nothing.
+        if (!bag.buy(id, def.price ?? 0)) {
+          hud.toast('Non bastano i soldi', 1200);
+          return null;
+        }
+        hud.toast(`Comprato ${def.name}`, 1200);
+        return { stock: rows(), gold: bag.gold };
+      },
+    });
+    hud.setVisible(true);
+    mode = 'overworld';
+    applyHint();
+    autosave();
+    syncHud();
   }
 
   function cycleScale() {
@@ -741,6 +807,9 @@ export async function createGame({ canvas, uiRoot }) {
 
     stage.update(dt, step);
     stage.prompt.read();
+    // The shop owns its own keyboard edges, read once per frame like the battle
+    // prompt. It has no update(dt) on purpose (hud/dialogue/menu do not either).
+    shop.read();
 
     // `talking` is the world-under-a-briefing case: mode is 'dialogue' so the
     // box is dismissible, but a `hintOnly` stage must not stop the leader, or
@@ -1006,6 +1075,9 @@ export async function createGame({ canvas, uiRoot }) {
       return markers.map((m) => ({ id: m.id, name: m.name, x: +m.x.toFixed(2), z: +m.z.toFixed(2), kind: m.kind, used: m.used }));
     },
     inVillage: (x, z) => inVillage({ x, z }),
+    // The counter, so the harness can assert a purchase actually happened rather
+    // than reading a toast off a screenshot.
+    get shopState() { return shop.state; },
     // Teleport is a QA affordance, not a cheat hook for the game: the harness
     // has to reach the cache and the mesa without walking there, and walking
     // there means rolling random encounters that make the run non-deterministic.
@@ -1048,6 +1120,7 @@ export async function createGame({ canvas, uiRoot }) {
     dialogue.dispose();
     menu.dispose();
     title.dispose();
+    shop.dispose();
     for (const m of markers) m.sprite.material.dispose();
     markTex.dispose();
     tufts.geo.dispose();

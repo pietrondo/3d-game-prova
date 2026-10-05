@@ -16,6 +16,7 @@
     "dz": 2.0,
     "kind": "item",
     "give": { "tonic": 3 },
+    "gold": 40,
     "lines": [
       { "speaker": "Cassa Arrugginita", "text": "Incastrata sotto la lastra e mai pi\u00f9 aperta. La vernice \u00e8 ancora viva: chi l'ha chiusa passava di qui ogni giorno." },
       { "speaker": "Olrik", "text": "Tonici da campo, tre. Bastano per farci respirare tutti e quattro fino al ritorno. Li prendo." }
@@ -41,7 +42,8 @@
     "kind": "battle",
     "zone": "stone",
     "lines": [
-      { "speaker": "Guardia dell'Altipiano", "text": "Una roccia non chiede il permesso per salire. La Sentinella ti ha aspettato pi\u00f9 di quanto ti creda." }
+      { "speaker": "Sentinella di Pietra", "text": "Nessuno sale quass\u00f9 per una roccia. Anche l'altra era salita per la mappa, e adesso \u00e8 ferma come me." },
+      { "speaker": "Olrik", "text": "Quale altra?" }
     ]
   },
   {
@@ -58,9 +60,9 @@
     "id": "fabbro",
     "name": "il Fabbro",
     "anchor": "smith",
-    "kind": "talk",
+    "kind": "shop",
     "lines": [
-      { "speaker": "Fabbro Ivo", "text": "Fucine qui non ne ho. Se la nave ha lasciato qualcosa di buono in mare, portamelo e ci diamo un'occhiata." },
+      { "speaker": "Fabbro Ivo", "text": "Fucine qui non ne ho. Ma qualcosa da vendere s\u00ec, e il relitto paga bene." },
       { "speaker": "Fabbro Ivo", "text": "Da che la Sentinella ha smesso di scendere, la corrente non porta pi\u00f9 legna. Non so se \u00e8 la stessa cosa." }
     ]
   }
