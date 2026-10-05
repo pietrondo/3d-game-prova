@@ -1,0 +1,75 @@
+{
+  "id": "level2",
+  "name": "L'Altipiano",
+
+  "intro": [
+    { "speaker": "", "text": "Il canalone saliva per duecento passi e poi smetteva di salire, che \u00e8 il modo in cui una salita finisce." },
+    { "speaker": "", "text": "Sopra: pietra piatta, vento, e i resti di un accampamento che nessuno ha smontato." }
+  ],
+
+  "stages": [
+    {
+      "id": "arrivo",
+      "when": "always",
+      "advance": "onMove",
+      "goal": "Muoviti con WASD",
+      "hintOnly": true,
+      "lines": [
+        { "speaker": "Vell", "text": "Piano. Il vento qui porta via le parole e non le riporta." },
+        { "speaker": "Vell", "text": "Cammina e guarda dove metti i piedi. Sopra questa pietra non c'\u00e8 niente che perdoni." }
+      ]
+    },
+    {
+      "id": "campo",
+      "when": "onMove",
+      "advance": "onTalk",
+      "goal": "Parla con Vell",
+      "marker": "vell",
+      "hintOnly": true,
+      "lines": [
+        { "speaker": "Vell", "text": "Otto anni ho disegnato questa costa senza sapere cosa ci fosse sopra." },
+        { "speaker": "Vell", "text": "Adesso lo so, e preferivo quando non lo sapevo. Vieni qui." }
+      ]
+    },
+    {
+      "id": "punto",
+      "when": "onTalk",
+      "advance": "onTalk",
+      "goal": "Cerca il punto di rilevamento",
+      "marker": "punto",
+      "lines": [
+        { "speaker": "Vell", "text": "Ha piantato i pali pi\u00f9 avanti di dove \u00e8 ferma lei. Vuol dire che stava ancora misurando quando ha smesso di scendere." },
+        { "speaker": "Vell", "text": "Il taccuino \u00e8 la parte che mi interessa. Il resto prendetelo voi." }
+      ]
+    },
+    {
+      "id": "resto",
+      "when": "onTalk",
+      "advance": "onBattle",
+      "goal": "Sconfiggi ci\u00f2 che la tratteneva",
+      "marker": "resto",
+      "lines": [
+        { "speaker": "Vell", "text": "L'ultima pagina dice tre parole: guarda, segna, torna. Le ripeteva da otto anni." },
+        { "speaker": "Olrik", "text": "Allora le rispondiamo, e stavolta \u00e8 lei a smettere." }
+      ]
+    },
+    {
+      "id": "fine",
+      "when": "onBattle",
+      "advance": "onTalk",
+      "goal": "Torna da Vell",
+      "marker": "vell",
+      "lines": [
+        { "speaker": "Vell", "text": "Ha smesso. Senti? Il vento adesso fa un rumore solo." },
+        { "speaker": "Vell", "text": "La mappa \u00e8 finita. Non la chiudo io e non l'ha chiusa lei: l'abbiamo chiusa in quattro, e nessuno di noi era stato scelto." },
+        { "speaker": "Olrik", "text": "Allora scendiamo. E questa volta, a valle, qualcuno ci aspetta." }
+      ],
+      "completes": true
+    }
+  ],
+
+  "progress": {
+    "flagKey": "level2",
+    "completeText": "L'Altipiano, completo"
+  }
+}

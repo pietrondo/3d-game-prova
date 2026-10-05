@@ -1,0 +1,17 @@
+{
+  "name": "L'Altipiano",
+
+  "palette": {
+    "trim": "#3b2d20",
+    "stone": "#9a958c",
+    "door": "#4a3325",
+    "crate": "#7a5c3a"
+  },
+
+  "layout": [],
+
+  "anchors": [
+    { "id": "camp", "x": 0, "z": 0.6, "facing": "down", "speaker": "Vell la Cartografa" },
+    { "id": "edge", "x": 3.0, "z": 2.4, "facing": "down", "speaker": "la Discesa" }
+  ]
+}

@@ -46,10 +46,6 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import { createEngine } from './core/engine.js';
 import { createInput } from './core/input.js';
 import { tween, wait, Ease } from './core/tween.js';
-import { createTerrain } from './world/terrain.js';
-import { createSky } from './world/sky.js';
-import { createProps } from './world/props.js';
-import { createVillage } from './world/village.js';
 import { createParty } from './actors/party.js';
 import { createHud } from './ui/hud.js';
 import { createDialogue } from './ui/dialogue.js';
@@ -61,43 +57,17 @@ import { createLevel, EVENTS } from './core/level.js';
 import { createSave } from './core/save.js';
 import { createTitle } from './ui/title.js';
 import { createShop } from './ui/shop.js';
+import { createArea } from './game/area.js';
+import { AREAS, START_AREA } from './game/areas.js';
 import './battle/battle.css';
 
-import TILES from './data/tiles.json';
 import PROPS from './data/props.json';
 import ACTORS from './data/actors.json';
 import SKILLS from './data/skills.json';
 import ITEMS from './data/items.json';
-import LEVEL1 from './data/level1.json';
-import VILLAGE from './data/village.json';
 import INFO from './data/info.json';
-import MARKERS_DATA from './data/markers.json';
 import SHOP from './data/shop.json';
 
-// 64x64, not the original 40x40. The island is a radial falloff, so the size
-// is not a viewport — it IS the island: at 40 the shoreline sat ~14 units from
-// the centre and the whole game happened in a 27-unit disc, which is a clearing,
-// not a place. 64 puts the shore at ~22 units (a 44-unit island) and gives the
-// village, the meadow and the mesa their own room. Cost is 2.56x the terrain
-// cells and 2.56x the props; terrain is chunked and props are merged per type,
-// so it is some tens of extra draw calls, which the post pass absorbs.
-const MAP = { width: 64, depth: 64, seed: 1337, heightScale: 3.2 };
-// No longer hardcoded to the mesa top: the village is found on the terrain (see
-// world/village.js) and this is the fallback only if that search fails.
-const SPAWN = { x: 32, z: 42 };
-// 0.22, down from 0.32. The old value was chosen for LOOKS on a 40x40 map and
-// validated by a measurement taken on the MESA TOP, where the spawn's keepOut
-// holds the props off and the ground reads almost clear (2.3% blocked). Measured
-// in actual wilderness — a 3-unit disc with 95% of it on walkable land — the same
-// island is 36% obstructed, which is the original "walking feels like wading
-// through a wood" complaint and was never actually retested. 0.22 keeps the
-// island wooded without putting something on a third of the ground.
-const PROP_DENSITY = 0.16;
-// 700 was tuned for 40x40, where props saturate near 230 and the cap is never
-// reached. On 64x64 the same density wants ~600 and the cap starts truncating
-// the far side of the map instead of failing loudly — a half-furnished island
-// that reads as a bug in the terrain.
-const PROP_MAX = 1600;
 const PARTY_IDS = ['olrik', 'brann', 'tess', 'maren'];   // formation + HUD order
 const DEADZONE = 0.85;   // world units the leader may wander before the camera moves
 const LEAD_AHEAD = 0.7;
@@ -124,37 +94,19 @@ const RUSTLE = 0.4;      // seconds of grass pop before the screen goes black
 const STONE_TILES = new Set(['stone', 'cliff']);
 const SUN_DIR = new THREE.Vector3(0.6, 0.7, 0.4).normalize();
 
-// The village terrace. NORMALISED on purpose (see terrain.js): `angle` is a
-// direction from the island centre and `at` a fraction of the island radius, so
-// the village follows the island when the size or the seed changes. Math.PI/2 is
-// +z — the near side of the map, which is the side the camera looks from, so the
-// village sits in FRONT of the mesa and the mesa is the climb you can see.
-//
-// `r` and `feather` are measured, not chosen. A piece is placed at ONE ground
-// height (its centre), so what matters is the height SPREAD across its own
-// footprint: a house with a 0.4 spread floats on one corner, and a 9-unit fence
-// with a 0.46 spread is buried at one end. At r=5.5/feather=2.4 the flat core was
-// only 3.1 and 4 of the 11 pieces failed that test (fence_n sat 0.66 above the
-// terrace). At r=7.5/feather=2.0 the core is 5.5 and all 11 sit level, worst
-// spread 0.21. The cost is that the terrace reaches ~2 units past the old
-// shoreline, so a small headland of grass is pushed into the sea — visible in
-// docs/shots, and cheaper than a village whose buildings hover.
-const VILLAGE_SITE = { angle: Math.PI / 2, at: 0.62, r: 7.5, feather: 2.0 };
-
-// Markers are placed RELATIVE TO THE VILLAGE, not at absolute coordinates. A
-// hardcoded (20.5, 31.5) was a coordinate on a 40x40 island and means open sea
-// on a 64x64 one; anchored to the village they survive every change to the map.
-// `anchor` takes a named spot from village.json; `dx`/`dz` are world units from
-// the village centre. The table itself is CONTENT and lives in data/markers.json
-// (see the project rule: content is data, never hardcoded coordinates) — which
-// also lets a test assert that every `anchor` names an anchor that exists, the
-// check that would have caught Vell standing on the well.
-const MARKERS = MARKERS_DATA;
-
 export async function createGame({ canvas, uiRoot }) {
   const engine = createEngine(canvas);
   const input = createInput(window);
   const rng = Math.random;
+
+  // The area this session is in, and its level definition. A transition rebinds
+  // them, which is why they are `let` and why the world is a factory: it can be
+  // built and thrown away, so a second area is a lookup and not a second copy of
+  // the game.
+  let area = createArea({ engine, def: AREAS[START_AREA] });
+  let { sky, terrain, village, props, colliders, spawn } = area;
+  let MARKERS = area.def.markers;   // CONTENT, from data/markers.json
+  let LEVEL = area.def.level;       // this area's level definition
 
   // ---------------------------------------------------------------- state ---
   let mode = 'title';            // title | overworld | dialogue | menu | transition | battle
@@ -169,95 +121,15 @@ export async function createGame({ canvas, uiRoot }) {
   let nextRoll = ROLLS_GRACE;
 
   // ---------------------------------------------------------------- world ---
-  // sky.js authors its lights in three.js physical units. Measured off the
-  // framebuffer, a 2.1 sun + 0.8 hemi lands the whole island between luminance
-  // 30 and 110 out of 255 — it reads as night, not as a sunlit diorama, and the
-  // dark albedos never recover. contracts.md §7 hands `lights` to the game layer
-  // precisely so the director can balance them, so balance them here.
-  const SUN_INTENSITY = 3.7;
-  const HEMI_INTENSITY = 1.55;
-  const sky = createSky({ mapSize: MAP.width, sunDir: SUN_DIR });
-  sky.lights.sun.intensity = SUN_INTENSITY;
-  sky.lights.hemi.intensity = HEMI_INTENSITY;
-  const terrain = createTerrain({ ...MAP, tiles: TILES, shelf: VILLAGE_SITE });
-  // The village is built BEFORE the props scatter, so the scatter can be told to
-  // leave the terrace alone. A pine through a roof is the same defect as a pine
-  // in front of the party: the world was generated without knowing the building
-  // was going to be there.
-  const village = createVillage({ terrain, definitions: VILLAGE, scene: engine.scene });
-
-  /**
-   * Where a marker stands, resolved against the village. `anchor` takes a named
-   * spot from village.json; `dx`/`dz` are offsets from the village centre. Both
-   * are world space by the time this returns, so nothing downstream needs to
-   * know the village exists.
-   */
-  function markerSpot(m) {
-    if (m.anchor) {
-      const a = village.anchors.find((x) => x.id === m.anchor);
-      if (a) return { x: a.x, z: a.z };
-      // A marker naming an anchor that does not exist used to fall through to the
-      // village centre SILENTLY, which put Vell — the NPC two level stages gate
-      // on — on top of the well while her intended anchor sat unused. Loud, and
-      // still survivable: the fallback keeps the game playable.
-      console.error(`[hd2d] marker "${m.id}" wants anchor "${m.anchor}", which village.json does not define`);
-    }
-    const c = village.centre || SPAWN;
-    return { x: c.x + (m.dx || 0), z: c.z + (m.dz || 0) };
-  }
-
-  /** Inside the village the wilderness does not roll encounters. */
-  const inVillage = (p) =>
-    !!village.centre
-    && Math.hypot(p.x - village.centre.x, p.z - village.centre.z) <= (village.safeRadius || 0);
-  const villageSolid = [
-    { x: village.centre?.x ?? SPAWN.x, z: village.centre?.z ?? SPAWN.z, r: (village.radius || 0) + 1.5 },
-  ];
-  // Nothing solid inside 3 units of the spawn, the village or a marker. Two
-  // reasons, both measured: a 2.4-unit pine in front of the party is a rendering
-  // defect the moment the HUD is up, and the follow chain's slots are anchored to
-  // the leader, so a collider sitting on a slot makes that member slide off it
-  // forever. On seed 11 that was 3 of 3 follower slots inside a collider.
-  const KEEPOUT = 3;
-  const markerWorld = MARKERS.map((m) => markerSpot(m));
-  const keepOut = [SPAWN, ...villageSolid, ...markerWorld]
-    .map((p) => ({ x: p.x, z: p.z, r: Math.max(KEEPOUT, p.r || 0) }));
-  const props = createProps({
-    terrain, definitions: PROPS, density: PROP_DENSITY, seed: 11, keepOut, maxCount: PROP_MAX,
-  });
-  engine.scene.add(sky.group, terrain.group, props.group);
-
-  // Both colliders, and the village's own first: a building is a much larger
-  // obstacle than a trunk and the player hits it far more often.
-  const colliders = [...village.colliders, ...props.colliders];
+  // The world — sky, terrain, terrace, village, props, colliders, spawn — is
+  // built by `createArea` from the area registry and destructured at module
+  // scope. What the director keeps is the PARTY, because the party is the player
+  // and has to survive a transition, and aliases to the area's own searches so
+  // the call sites below read exactly as they did when this was all one file.
   const party = createParty({
     memberIds: PARTY_IDS, data: ACTORS, terrain, colliders, scene: engine.scene,
   });
-
-  /**
-   * Spawn with prop clearance. A solid prop pushes a collider and actor.js slides
-   * off them, so starting INSIDE one leaves the leader wedged with three of the
-   * four directions refused and the game reads as "the controls do not work".
-   * Nudge to the nearest clear cell.
-   */
-  function clearSpot(x, z, against = colliders) {
-    for (let ring = 0; ring <= 4; ring++) {
-      for (let dz = -ring; dz <= ring; dz++) {
-        for (let dx = -ring; dx <= ring; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dz)) !== ring) continue;
-          const px = x + dx * 0.5;
-          const pz = z + dz * 0.5;
-          if (!terrain.isWalkable(px, pz)) continue;
-          if (against.some((c) => Math.hypot(c.x - px, c.z - pz) < c.r + 0.55)) continue;
-          return { x: px, z: pz };
-        }
-      }
-    }
-    return { x, z };
-  }
-  // The village road is a walkable terrace, but the well and the houses are not,
-  // so the spawn still goes through the clearance search.
-  const spawn = clearSpot(village.spawn?.x ?? SPAWN.x, village.spawn?.z ?? SPAWN.z);
+  const { clearSpot, markerSpot, inVillage } = area;
 
   /**
    * Put the WHOLE party at (x, z) as a short trail, every member cleared against
@@ -498,7 +370,7 @@ export async function createGame({ canvas, uiRoot }) {
   //
   // The level is DATA (data/level1.json) driven by a pure machine (core/level.js).
   // The director's only job is to feed it events and show what it answers.
-  const level = createLevel(LEVEL1, { intro: LEVEL1.intro });
+  const level = createLevel(LEVEL, { intro: LEVEL.intro });
   // True while a `hintOnly` briefing is up: mode is 'dialogue' so the box is
   // dismissible, but the world keeps running underneath it. The distinction is
   // the whole point of the flag — see speakStage().
@@ -552,7 +424,7 @@ export async function createGame({ canvas, uiRoot }) {
     applyHint();
     autosave();
     if (level.isComplete) {
-      hud.toast(LEVEL1.progress?.completeText || 'Area complete', 3200);
+      hud.toast(LEVEL.progress?.completeText || 'Area complete', 3200);
       return true;
     }
     await speakStage();
@@ -941,10 +813,10 @@ export async function createGame({ canvas, uiRoot }) {
 
   /** Put the world, the party and the bag back to a brand-new game. */
   function resetSession() {
-    level.restore({ id: LEVEL1.id, index: 0, complete: false });
+    level.restore({ id: LEVEL.id, index: 0, complete: false });
     // `shown` lives on the stage objects, so a reset has to clear it too or the
     // second playthrough would skip every briefing it "already showed".
-    for (const s of LEVEL1.stages) delete s.shown;
+    for (const s of LEVEL.stages) delete s.shown;
     bag.clear();
     for (const a of allies) {
       a.currentHP = a.maxHP;
@@ -971,7 +843,7 @@ export async function createGame({ canvas, uiRoot }) {
       // line closes, or the first briefing types on top of the intro.
       mode = 'dialogue';
       applyHint();
-      await dialogue.say(LEVEL1.intro);
+      await dialogue.say(LEVEL.intro);
       mode = 'overworld';
       applyHint();
       await speakStage();
@@ -1027,7 +899,7 @@ export async function createGame({ canvas, uiRoot }) {
     }
     save.apply(data);
     if (level.isComplete) {
-      hud.toast(LEVEL1.progress?.completeText || 'Area completata: progressi ripristinati', 3000);
+      hud.toast(LEVEL.progress?.completeText || 'Area completata: progressi ripristinati', 3000);
     } else {
       hud.toast('Progressi ripristinati', 2000);
     }
@@ -1092,7 +964,7 @@ export async function createGame({ canvas, uiRoot }) {
     get level() {
       const s = level.stage;
       return {
-        id: LEVEL1.id, index: level.index, complete: level.isComplete,
+        id: LEVEL.id, index: level.index, complete: level.isComplete,
         stage: s ? s.id : null, objective: level.objective,
       };
     },
@@ -1166,10 +1038,9 @@ export async function createGame({ canvas, uiRoot }) {
     stage.dispose();
     party.dispose();
     popY.clear();
-    village.dispose();
-    props.dispose();
-    terrain.dispose();
-    sky.dispose();
+    // One call: the area owns its sky, terrain, village and props, and its
+    // dispose also takes their groups out of the scene.
+    area.dispose();
     hud.dispose();
     dialogue.dispose();
     menu.dispose();

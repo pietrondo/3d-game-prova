@@ -1,0 +1,48 @@
+[
+  {
+    "id": "vell",
+    "name": "Vell",
+    "anchor": "camp",
+    "kind": "talk",
+    "lines": [
+      { "speaker": "Vell la Cartografa", "text": "Ci siamo. Otto anni e sono in cima, con quattro che non sapevano nemmeno di doverci salire." },
+      { "speaker": "Vell la Cartografa", "text": "Lei aveva piantato il punto di rilevamento pi\u00f9 avanti. Andiamo a vedere cosa stava misurando." }
+    ]
+  },
+  {
+    "id": "punto",
+    "name": "il Punto di Rilevamento",
+    "dx": 5.5,
+    "dz": 3.5,
+    "kind": "item",
+    "give": { "ether": 2 },
+    "gold": 60,
+    "lines": [
+      { "speaker": "Punto di Rilevamento", "text": "Tre pali, una corda, e un taccuino fradicio aperto sull'ultima pagina." },
+      { "speaker": "Vell la Cartografa", "text": "Non stava disegnando l'isola. Stava disegnando qualcosa che si muoveva." },
+      { "speaker": "Olrik", "text": "Etere, e sessanta monete che nessuno reclamer\u00e0. Prendo tutto." }
+    ]
+  },
+  {
+    "id": "resto",
+    "name": "ci\u00f2 che tratteneva",
+    "dx": -5.0,
+    "dz": -4.5,
+    "kind": "battle",
+    "zone": "stone",
+    "lines": [
+      { "speaker": "Sentinella Logora", "text": "NON \u00c8 ANCORA FINITA. GUARDA. SEGNA. TORNA." },
+      { "speaker": "Vell la Cartografa", "text": "Era la sua voce. Trenta passi sotto di noi, e cantava le stesse tre parole da otto anni." }
+    ]
+  },
+  {
+    "id": "uscita",
+    "name": "la Discesa",
+    "anchor": "edge",
+    "kind": "exit",
+    "to": "riva",
+    "lines": [
+      { "speaker": "la Discesa", "text": "Il canalone da cui siete saliti. Gira e torna gi\u00f9, dalla parte del villaggio." }
+    ]
+  }
+]
