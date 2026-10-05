@@ -60,6 +60,7 @@ import { createShop } from './ui/shop.js';
 import { createArea } from './game/area.js';
 import { AREAS, START_AREA } from './game/areas.js';
 import { installQaHandle } from './game/qa.js';
+import { createRustle } from './game/rustle.js';
 import './battle/battle.css';
 
 import PROPS from './data/props.json';
@@ -312,67 +313,10 @@ export async function createGame({ canvas, uiRoot }) {
   };
 
   // ------------------------------------------------------ grass rustle set ---
-  const tufts = (() => {
-    const def = PROPS.grassTuft;
-    const blades = [];
-    for (let i = 0; i < 3; i++) {
-      const b = new THREE.BoxGeometry(0.07, def.height, 0.07);
-      b.rotateZ((i - 1) * 0.24);
-      b.rotateY((i / 3) * Math.PI);
-      b.translate(0, def.height / 2, 0);
-      blades.push(b.toNonIndexed());
-    }
-    const geo = mergeGeometries(blades, false);
-    blades.forEach((b) => b.dispose());
-    const mat = new THREE.MeshStandardMaterial({ color: def.color, flatShading: true, roughness: 1 });
-    const group = new THREE.Group();
-    const list = [];
-    for (let i = 0; i < 18; i++) {
-      const m = new THREE.Mesh(geo, mat);
-      m.visible = false;
-      group.add(m);
-      list.push(m);
-    }
-    engine.scene.add(group);
-    return { group, mat, geo, list };
-  })();
-
-  /**
-   * The Octopath beat: the grass around the party shakes a beat before battle.
-   *
-   * One tween per tuft drives scale, roll and lift together. A pure scale pop
-   * reads as GROWTH; the decaying roll is what makes it read as a shake. Ten
-   * tufts at 1.5x was invisible at 24 units — 18 at 1.9x in a 3-unit ring
-   * actually registers.
-   */
-  function rustle(x, z) {
-    const n = tufts.list.length;
-    tufts.list.forEach((m, i) => {
-      const a = (i / n) * Math.PI * 2 + rng() * 0.5;
-      const r = 0.9 + rng() * 2.1;
-      const px = x + Math.cos(a) * r;
-      const pz = z + Math.sin(a) * r;
-      const baseY = terrain.heightAt(px, pz) - 0.05;
-      m.position.set(px, baseY, pz);
-      m.rotation.set(0, rng() * Math.PI, 0);
-      m.visible = terrain.isWalkable(px, pz);
-      const phase = rng() * 6.28;
-      m.scale.setScalar(0.01);
-      tween({
-        duration: RUSTLE, delay: i * 0.012, ease: Ease.linear,
-        onUpdate: (t) => {
-          const pop = t < 0.28 ? Ease.backOut(t / 0.28) : 1 - 0.24 * ((t - 0.28) / 0.72);
-          const s = 1.9 * pop;
-          const wob = Math.sin(t * 34 + phase) * 0.2 * (1 - t);
-          m.scale.set(s, s, s);
-          m.rotation.z = wob;
-          m.position.y = baseY + Math.abs(wob) * 0.5;
-        },
-        onComplete: () => { m.visible = false; m.rotation.z = 0; },
-      });
-    });
-    return wait(RUSTLE);
-  }
+  // The Octopath beat, as its own module: it is the only visual effect in the
+  // director, and the terrain it plants the tufts on is rebindable, so it is
+  // handed over per call rather than captured. See game/rustle.js.
+  const rustleFx = createRustle({ engine, def: PROPS.grassTuft, seconds: RUSTLE, rng });
 
   // --------------------------------------------------------------- wander ---
   const zoneAt = (x, z) => (STONE_TILES.has(terrain.tileAt(x, z)) ? 'stone' : 'meadow');
@@ -395,7 +339,7 @@ export async function createGame({ canvas, uiRoot }) {
     encounterLock = true;
     mode = 'transition';
     const l = party.leader.position;
-    await rustle(l.x, l.z);            // grass pops first — the Octopath beat
+    await rustleFx.rustle(l.x, l.z, terrain);            // grass pops first — the Octopath beat
     await fade(true);
     mode = 'battle';
     const { won, timedOut, loot, gold } = await stage.run(zone, forced);
@@ -1182,8 +1126,6 @@ export async function createGame({ canvas, uiRoot }) {
     shop.dispose();
     for (const m of markers) m.sprite.material.dispose();
     markTex.dispose();
-    tufts.geo.dispose();
-    tufts.mat.dispose();
     fadeEl.remove();
     engine.dispose();
   }

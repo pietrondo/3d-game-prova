@@ -58,14 +58,14 @@ Watch: `teleport` and `encounter` are behaviours, not views. Keep their bodies i
 `game.js` and expose them as thunks — `qa.js` must not need `clearSpot` or
 `startEncounter`.
 
-## Step 2 — `game/rustle.js` (the grass-rustle set)
+## Step 2 — `game/rustle.js` (the grass-rustle set) — **DONE**
 
-**~65 lines out.** Self-contained: `createRustle({ engine, terrain, rng, def })`
-returns `{ rustle(x, z), dispose() }`. It is the "Octopath beat" — the grass pops
-before an encounter — and it is the only visual effect in the director.
-
-Its geometry is built from `PROPS.grassTuft`, so pass the definition in rather than
-importing the table: it is content.
+**Measured: −57 lines.** Self-contained as predicted, and it is the step that
+proves the rule from step 1 in the other direction: `terrain` arrives PER CALL
+(`rustle(x, z, terrain)`) rather than at construction, because the area is
+rebuilt on every transition and a captured terrain would plant the tufts at the
+wrong heights after the climb — in silence. `rng` is captured, because
+`Math.random` cannot go stale.
 
 ## Step 3 — `game/cameraRig.js`
 
