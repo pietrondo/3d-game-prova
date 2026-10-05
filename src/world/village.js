@@ -290,6 +290,14 @@ export function createVillage({ terrain, definitions = {}, scene = null } = {}) 
     // written with a threshold (3.0) no dense village can ever meet, making it a
     // function that only ever fell back. Maximising instead of thresholding means
     // the result is never deliberately worse than the best available.
+    //
+    // Written down, not silent: this branch is a decision (the game must not
+    // spawn the party inside a wall) and the log names what was tried, so the
+    // decision stays visible instead of becoming the only behaviour that exists.
+    console.warn(
+      `[hd2d] village spawn: no point with ${needed} of clearance in ${Math.ceil(shelf.inner / 0.25) * 12} candidates; `
+      + `best was ${best.clearance.toFixed(2)} at (${best.x.toFixed(2)}, ${best.z.toFixed(2)})`,
+    );
     return { x: +best.x.toFixed(2), z: +best.z.toFixed(2), clearance: +best.clearance.toFixed(2) };
   }
 

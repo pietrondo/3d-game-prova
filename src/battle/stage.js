@@ -130,10 +130,24 @@ export function createStage({
   const popTag = (a, t, colour, size) => { if (a) popAt(headOf(a), t, size || 17, colour, 28); };
 
   // ------------------------------------------------------------- staging ---
-  /** Weighted pick from the zone's slice of the encounter table. */
+  /**
+   * Weighted pick from the zone's slice of the encounter table.
+   *
+   * The fallback to the WHOLE table is written down rather than silent, on the
+   * principle that a fallback which says nothing is a decision that has stopped
+   * being visible. It is a choice, not an invention: the requested zone is still
+   * in hand and is named here, so the log says which zone missed and the caller
+   * can be checked. `tests/story.test.js` asserts that every zone a battle marker
+   * names exists in this table, which is the real guard — this line is for the
+   * path a test cannot reach, where a future caller passes a zone from somewhere
+   * the tests do not cover.
+   */
   function pickEncounter(zone) {
     let table = Object.entries(ENEMIES).filter(([, d]) => (d.encounter?.zone || 'meadow') === zone);
-    if (!table.length) table = Object.entries(ENEMIES);
+    if (!table.length) {
+      console.warn(`[hd2d] no encounter table for zone "${zone}"; falling back to every enemy`);
+      table = Object.entries(ENEMIES);
+    }
     let roll = rng() * table.reduce((s, [, d]) => s + (d.encounter?.weight ?? 1), 0);
     for (const [id, d] of table) {
       roll -= d.encounter?.weight ?? 1;
