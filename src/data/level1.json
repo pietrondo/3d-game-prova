@@ -3,9 +3,9 @@
   "name": "La Scia della Cartografa",
 
   "intro": [
-    { "speaker": "", "text": "Vell disegn\u00f2 quest'isola dalla scogliera, la notte in cui la nave da rilevamento smise di rispondere." },
-    { "speaker": "", "text": "Aveva ragione sulla forma. Non \u00e8 tornata." },
-    { "speaker": "Olrik", "text": "Allora la camminiamo. Waker, apri la fila." }
+    { "speaker": "", "text": "Tre giorni. La nave da rilevamento tace, e sull'isola non resta pi\u00f9 una riga da leggere." },
+    { "speaker": "", "text": "Vell disegna questa costa da anni. Le manca una curva sola, e quella curva \u00e8 l'altipiano." },
+    { "speaker": "Olrik", "text": "Quattro che il mare ha restituito. Nessuno di noi \u00e8 stato scelto." }
   ],
 
   "stages": [
@@ -16,8 +16,8 @@
       "goal": "Muoviti con WASD",
       "hintOnly": true,
       "lines": [
-        { "speaker": "Vell", "text": "Sei sul bordo del salto. Da qui in poi \u00e8 tutta terra." },
-        { "speaker": "Vell", "text": "Tieni W per andare a nord, A e D per spostarti di lato. S torna indietro." }
+        { "speaker": "Vell", "text": "Sei sul bordo del salto. Da qui \u00e8 tutta terra, e la terra si legge camminando." },
+        { "speaker": "Vell", "text": "W avanti, A e D di lato, S indietro. Come su una carta, ma la carta \u00e8 sotto i piedi." }
       ]
     },
     {
@@ -28,8 +28,8 @@
       "marker": "vell",
       "hintOnly": true,
       "lines": [
-        { "speaker": "Vell", "text": "Bene. Sai camminare. Era la parte che mi preoccupava." },
-        { "speaker": "Vell", "text": "Vieni qui e premi E. Parlare \u00e8 l'unico modo che ha quest'isola di dirci ancora qualcosa." }
+        { "speaker": "Vell", "text": "Bene, sai camminare. Era la parte che mi preoccupava." },
+        { "speaker": "Vell", "text": "Vieni qui e premi E. L'isola dice qualcosa solo a chi si ferma." }
       ]
     },
     {
@@ -39,8 +39,8 @@
       "goal": "Trova la Cassa Arrugginita",
       "marker": "cache",
       "lines": [
-        { "speaker": "Vell", "text": "A sud-ovest, al vecchio punto di segnalazione. C'\u00e8 una cassa sotto la lastra di pietra." },
-        { "speaker": "Vell", "text": "Prendi quello che c'\u00e8 dentro. Non ci servir\u00e0 a niente se restiamo a secco di forze." }
+        { "speaker": "Vell", "text": "A sud-ovest, al vecchio punto di segnalazione. C'\u00e8 una cassa sotto la lastra." },
+        { "speaker": "Vell", "text": "Prendi quello che c'\u00e8 dentro. Il villaggio vive del relitto: se la mappa non si chiude, nessuno manda pi\u00f9 navi." }
       ]
     },
     {
@@ -49,9 +49,9 @@
       "advance": "onMenu",
       "goal": "Apri il menu con Esc, scheda Oggetti",
       "lines": [
-        { "speaker": "Olrik", "text": "Tonici. Prendili." },
-        { "speaker": "Olrik", "text": "Esc apre il menu, e la scheda Oggetti \u00e8 quello che hai addosso." },
-        { "speaker": "Vell", "text": "In battaglia diventano una riga nella lista dei comandi, come le abilit\u00e0." }
+        { "speaker": "Olrik", "text": "Tonici da campo. Prendili: il mare non restituisce niente gratis." },
+        { "speaker": "Olrik", "text": "Esc apre il menu. Gli oggetti sono quello che hai addosso, e in battaglia diventano un comando." },
+        { "speaker": "Vell", "text": "Tra la carta e le mani c'\u00e8 sempre un elmetto. Voi avete l'uno, io l'altro." }
       ]
     },
     {
@@ -61,8 +61,8 @@
       "goal": "Sconfiggi la Pattuglia dei Canneti",
       "marker": "reed",
       "lines": [
-        { "speaker": "Vell", "text": "Tengono il prato. Non sono furbi, sono solo in quattro e non hanno paura." },
-        { "speaker": "Vell", "text": "Quando si apre la lista dei comandi, le frecce si muovono e Enter conferma." }
+        { "speaker": "Vell", "text": "Tengono il prato. Non sono furbi: sono in quattro e non hanno paura." },
+        { "speaker": "Olrik", "text": "Si sceglie un comando e si conferma. Come parlare, ma pi\u00f9 veloce." }
       ]
     },
     {
@@ -72,8 +72,8 @@
       "goal": "Rompi la Sentinella di Pietra sull'altipiano",
       "marker": "watch",
       "lines": [
-        { "speaker": "Vell", "text": "Poi c'\u00e8 la Sentinella. Sta su quell'altipiano da quando la nave ha smesso di rispondere." },
-        { "speaker": "Vell", "text": "\u00c8 immune ai fulmini e dura con tutto il resto. Tess: ghiaccio, e solo ghiaccio." }
+        { "speaker": "Vell", "text": "La Sentinella sta sull'altipiano da prima che la nave arrivasse. Non so perch\u00e9 non scende." },
+        { "speaker": "Vell", "text": "Il fulmine non la tocca. Ghiaccio s\u00ec, e solo ghiaccio. Tess lo sa meglio di me." }
       ]
     },
     {
@@ -83,8 +83,8 @@
       "goal": "Torna da Vell",
       "marker": "vell",
       "lines": [
-        { "speaker": "Vell", "text": "Quindi era una persona. Avevo iniziato a considerarla un fenomeno atmosferico." },
-        { "speaker": "Vell", "text": "L'isola \u00e8 nostra. L'altipiano si pu\u00f2 salire, ora, qualunque cosa stesse trattenendo." },
+        { "speaker": "Vell", "text": "L'hai rotta. Guardale le mani: un taccuino, e la curva che cercavo da otto anni." },
+        { "speaker": "Vell", "text": "L'ho sostituita io, quando sal\u00ec. Le ho detto di aspettarmi in cima. Non sono salito." },
         { "speaker": "Olrik", "text": "Allora saliamo. E stavolta non ci fermiamo in cima." }
       ],
       "completes": true

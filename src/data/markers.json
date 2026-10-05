@@ -6,7 +6,7 @@
     "kind": "talk",
     "lines": [
       { "speaker": "Vell la Cartografa", "text": "Ti sei svegliato. Credevo che la corrente ti avesse preso come gli altri." },
-      { "speaker": "Vell la Cartografa", "text": "La nave non risponde da tre giorni. Io disegno quest'isola da prima che affondasse, e non l'ho mai finita." }
+      { "speaker": "Vell la Cartografa", "text": "Il villaggio mangia il relitto. Se la mappa non si chiude, da domani la terraferma manda un'altra nave, o nessuna." }
     ]
   },
   {
@@ -17,8 +17,8 @@
     "kind": "item",
     "give": { "tonic": 3 },
     "lines": [
-      { "speaker": "Cassa Arrugginita", "text": "Qualcuno l'ha incastrata sotto la lastra e non \u00e8 pi\u00f9 tornato a prenderla." },
-      { "speaker": "Olrik", "text": "Tonici da campo. Abbastanza per farci respirare tutti e quattro. Li prendo." }
+      { "speaker": "Cassa Arrugginita", "text": "Incastrata sotto la lastra e mai pi\u00f9 aperta. La vernice \u00e8 ancora viva: chi l'ha chiusa passava di qui ogni giorno." },
+      { "speaker": "Olrik", "text": "Tonici da campo, tre. Bastano per farci respirare tutti e quattro fino al ritorno. Li prendo." }
     ]
   },
   {
@@ -29,7 +29,8 @@
     "kind": "battle",
     "zone": "meadow",
     "lines": [
-      { "speaker": "Pattuglia dei Canneti", "text": "Qui nessuno cammina da solo. Torna indietro, e alla svelta." }
+      { "speaker": "Pattuglia dei Canneti", "text": "Qui nessuno cammina da solo da quando la pietra si \u00e8 mossa. Torna indietro, e senza fare domande." },
+      { "speaker": "Olrik", "text": "Siamo in quattro. Voi avete il campo, noi il fiato. Dividiamo pure." }
     ]
   },
   {
@@ -40,7 +41,7 @@
     "kind": "battle",
     "zone": "stone",
     "lines": [
-      { "speaker": "Guardia dell'Altipiano", "text": "Sei salito fin quass\u00f9 per una roccia. La Sentinella aspetta da pi\u00f9 tempo di te." }
+      { "speaker": "Guardia dell'Altipiano", "text": "Una roccia non chiede il permesso per salire. La Sentinella ti ha aspettato pi\u00f9 di quanto ti creda." }
     ]
   },
   {
@@ -49,8 +50,8 @@
     "anchor": "child",
     "kind": "talk",
     "lines": [
-      { "speaker": "Bimba", "text": "Se vai verso la pietra, porta il ghiaccio. Il fuoco non serve a niente, lass\u00f9." },
-      { "speaker": "Bimba", "text": "Lo dice sempre mio nonno. Poi per\u00f2 non ci va, nessuno ci va." }
+      { "speaker": "Bimba", "text": "Se vai alla pietra, porta il ghiaccio. Il fuoco arriva e muore l\u00ec." },
+      { "speaker": "Bimba", "text": "Nostra nonna diceva che lass\u00f9 qualcuno aspettava. Io non ci sono mai andata, per\u00f2." }
     ]
   },
   {
@@ -59,8 +60,8 @@
     "anchor": "smith",
     "kind": "talk",
     "lines": [
-      { "speaker": "Fabbro Ivo", "text": "Fucine qui non ne ho. Se trovi qualcosa di utile sulla nave, portamelo e vediamo." },
-      { "speaker": "Fabbro Ivo", "text": "Da quando \u00e8 caduta la Sentinella sull'altipiano, la corrente ha smesso di portare legna. Non so se le due cose c'entrano." }
+      { "speaker": "Fabbro Ivo", "text": "Fucine qui non ne ho. Se la nave ha lasciato qualcosa di buono in mare, portamelo e ci diamo un'occhiata." },
+      { "speaker": "Fabbro Ivo", "text": "Da che la Sentinella ha smesso di scendere, la corrente non porta pi\u00f9 legna. Non so se \u00e8 la stessa cosa." }
     ]
   }
 ]
