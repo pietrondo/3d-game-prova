@@ -108,6 +108,26 @@ rather than approximated:
 
 All combat logic is pure and Three.js-free so it can be unit-tested in Node.
 
+## Economy
+
+Gold comes from fights and from the wreck, and it goes to the blacksmith in
+`La Riva`. `items.json` prices three items; `data/shop.json` is what he stocks.
+
+The purchase is `inventory.buy(id, price)` and it is deliberately NOT in the shop
+UI. `if (bag.spend(price)) bag.add(id)` has two failure windows: an id that is not
+in the catalogue takes the gold and delivers nothing, and any exception between the
+two calls leaves the purchase half-applied. Check the id, pay, deliver — one
+operation, unit-tested without a DOM.
+
+A `kind: 'shop'` marker is REPEATABLE and is never marked used. A shop you can only
+enter once is a vending machine, and the gold from the next fight would have
+nowhere to go. Every other marker is one-shot.
+
+The purse starts at zero on purpose and the wreck pays 40, because the blacksmith
+is reachable in the first minute while the first fight pays 7 and a tonic costs 30:
+without the wreck the shop exists and cannot be used, which is a locked door with
+a counter behind it.
+
 ## Game feel
 
 Hit-stop, camera push-in on the swing, `engine.shake` on impact, damage numbers that
@@ -125,10 +145,10 @@ src/
   actors/  spriteFactory.js  actor.js  party.js
   combat/  weaknesses.js  damage.js  turnOrder.js  ai.js  battle.js
   battle/  stage.js  commands.js  battle.css
-  ui/      hud.js  dialogue.js  menu.js  title.js
+  ui/      hud.js  dialogue.js  menu.js  title.js  shop.js
   data/    tiles.json  props.json  actors.json  enemies.json  skills.json
-           items.json  level1.json  village.json  info.json
-  game.js  main.js
+           items.json  level1.json  village.json  info.json  markers.json  shop.json
+  game.js  main.js  serve.py
 ```
 
 One responsibility per file, every file under 600 lines. Contracts between modules are
@@ -139,8 +159,10 @@ talking to each other.
 
 `vitest` on the pure logic only: noise determinism, multiplier resolution order, damage
 (crit + immune branches), timeline ordering, dead-skipping, `Ease` monotonicity, battle
-turn progression, boost break, the inventory, the level machine, the terrain terrace
-and the village. The renderer is not unit-tested — QA reviews it by screenshot and
+turn progression, boost break, the inventory and its `buy`, the level machine, the
+terrain terrace, the village against a REAL terrain, and the content invariants of
+`level1.json`/`markers.json` (stage ids, marker and anchor references, line budgets,
+encounter zones). The renderer is not unit-tested — QA reviews it by screenshot and
 console output.
 
 **`npm test` cannot see missing wiring.** Every module above is individually
